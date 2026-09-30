@@ -38,6 +38,7 @@ export function DiaryReader({
   const currentIndex = orderedEntries.findIndex((item) => item.id === entry.id);
   const previous = orderedEntries[currentIndex + 1] ?? null;
   const next = orderedEntries[currentIndex - 1] ?? null;
+  const [coverImage, ...extraImages] = entry.images;
 
   return (
     <motion.div
@@ -60,25 +61,35 @@ export function DiaryReader({
           <X size={20} />
         </button>
 
-        <header className="reader-header">
-          <time dateTime={entry.date}>{formatLongDate(entry.date)}</time>
-          <span>{formatWeekday(entry.date)}</span>
-          <h2 id="reader-title">{entry.title}</h2>
-          <div className="reader-meta">
-            <span>{entry.mood}</span>
-            {entry.location ? (
-              <a href={getMapHref(entry)} target="_blank" rel="noreferrer">
-                <MapPin size={15} />
-                {entry.location}
-                <ExternalLink size={14} />
-              </a>
-            ) : null}
+        <section className="reader-hero">
+          <div className="reader-hero-copy">
+            <header className="reader-header">
+              <time dateTime={entry.date}>{formatLongDate(entry.date)}</time>
+              <span>{formatWeekday(entry.date)}</span>
+              <h2 id="reader-title">{entry.title}</h2>
+              <div className="reader-meta">
+                <span>{entry.mood}</span>
+                {entry.location ? (
+                  <a href={getMapHref(entry)} target="_blank" rel="noreferrer">
+                    <MapPin size={15} />
+                    {entry.location}
+                    <ExternalLink size={14} />
+                  </a>
+                ) : null}
+              </div>
+            </header>
           </div>
-        </header>
 
-        {entry.images.length ? (
+          {coverImage ? (
+            <div className="reader-cover">
+              <Image src={coverImage.dataUrl} alt={coverImage.alt} fill sizes="(min-width: 900px) 520px, 100vw" unoptimized />
+            </div>
+          ) : null}
+        </section>
+
+        {extraImages.length ? (
           <div className="reader-gallery">
-            {entry.images.map((image) => (
+            {extraImages.map((image) => (
               <div key={image.id}>
                 <Image src={image.dataUrl} alt={image.alt} fill sizes="280px" unoptimized />
               </div>
