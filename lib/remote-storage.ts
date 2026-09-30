@@ -23,13 +23,17 @@ export async function fetchRemoteEntries(): Promise<RemoteStorageResult> {
 }
 
 export async function saveRemoteEntries(entries: DiaryEntry[]): Promise<RemoteSaveResult> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 10000);
+
   try {
     const response = await fetch("/api/entries", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ entries })
+      body: JSON.stringify({ entries }),
+      signal: controller.signal
     });
 
     if (response.ok) {
@@ -38,7 +42,13 @@ export async function saveRemoteEntries(entries: DiaryEntry[]): Promise<RemoteSa
 
     const data = (await response.json().catch(() => null)) as { message?: string } | null;
     return { ok: false, reason: data?.message ?? "Could not sync with MongoDB." };
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { ok: false, reason: "MongoDB sync timed out." };
+    }
+
     return { ok: false, reason: "Could not reach MongoDB sync." };
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
