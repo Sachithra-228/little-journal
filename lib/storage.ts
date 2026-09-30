@@ -83,6 +83,7 @@ export function normalizeEntry(value: unknown): DiaryEntry | null {
       ? (maybe.mood as DiaryMood)
       : "Normal",
     location: typeof maybe.location === "string" ? maybe.location : "",
+    locationPoint: normalizeLocationPoint(maybe.locationPoint),
     tags: Array.isArray(maybe.tags)
       ? maybe.tags.filter((tag): tag is string => typeof tag === "string")
       : [],
@@ -99,5 +100,22 @@ export function normalizeEntry(value: unknown): DiaryEntry | null {
       typeof maybe.createdAt === "string" ? maybe.createdAt : new Date().toISOString(),
     updatedAt:
       typeof maybe.updatedAt === "string" ? maybe.updatedAt : new Date().toISOString()
+  };
+}
+
+function normalizeLocationPoint(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const maybe = value as { lat?: unknown; lng?: unknown; accuracy?: unknown };
+  if (typeof maybe.lat !== "number" || typeof maybe.lng !== "number") {
+    return undefined;
+  }
+
+  return {
+    lat: maybe.lat,
+    lng: maybe.lng,
+    accuracy: typeof maybe.accuracy === "number" ? maybe.accuracy : undefined
   };
 }

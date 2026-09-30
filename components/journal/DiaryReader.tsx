@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, MapPin, Pencil, Trash2, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  MapPin,
+  Pencil,
+  Trash2,
+  X
+} from "lucide-react";
 import Image from "next/image";
 import { sortEntries } from "@/lib/diary";
 import { formatLongDate, formatWeekday } from "@/lib/utils";
@@ -59,10 +67,11 @@ export function DiaryReader({
           <div className="reader-meta">
             <span>{entry.mood}</span>
             {entry.location ? (
-              <span>
+              <a href={getMapHref(entry)} target="_blank" rel="noreferrer">
                 <MapPin size={15} />
                 {entry.location}
-              </span>
+                <ExternalLink size={14} />
+              </a>
             ) : null}
           </div>
         </header>
@@ -133,4 +142,11 @@ export function DiaryReader({
       </motion.article>
     </motion.div>
   );
+}
+
+function getMapHref(entry: DiaryEntry) {
+  const query = entry.locationPoint
+    ? `${entry.locationPoint.lat},${entry.locationPoint.lng}`
+    : entry.location;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

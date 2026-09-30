@@ -15,6 +15,12 @@ export interface DiaryImage {
   alt: string;
 }
 
+export interface DiaryLocationPoint {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+}
+
 export interface DiaryEntry {
   id: string;
   date: string;
@@ -22,6 +28,7 @@ export interface DiaryEntry {
   content: string;
   mood: DiaryMood;
   location: string;
+  locationPoint?: DiaryLocationPoint;
   tags: string[];
   images: DiaryImage[];
   createdAt: string;
@@ -34,6 +41,7 @@ export interface DiaryDraft {
   content: string;
   mood: DiaryMood;
   location: string;
+  locationPoint?: DiaryLocationPoint;
   tags: string[];
   images: DiaryImage[];
 }

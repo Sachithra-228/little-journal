@@ -108,6 +108,7 @@ function sanitizeDraft(draft: DiaryDraft): DiaryDraft {
     content: draft.content.trim(),
     mood: draft.mood,
     location: draft.location.trim(),
+    locationPoint: draft.locationPoint,
     tags: Array.from(
       new Set(draft.tags.map((tag) => tag.trim()).filter(Boolean))
     ).slice(0, 12),

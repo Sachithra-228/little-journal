@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useRef, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { Camera, ImagePlus, X } from "lucide-react";
 import Image from "next/image";
 import { createId } from "@/lib/utils";
 import type { DiaryImage } from "@/types/diary";
@@ -13,6 +13,7 @@ interface PhotoUploaderProps {
 
 export function PhotoUploader({ images, onChange }: PhotoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
 
   async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
@@ -36,15 +37,33 @@ export function PhotoUploader({ images, onChange }: PhotoUploaderProps) {
           <span id="photos-heading">Photos</span>
           <p>Add small memory fragments from the day.</p>
         </div>
-        <button
-          className="quiet-button"
-          type="button"
-          onClick={() => inputRef.current?.click()}
-        >
-          <ImagePlus size={17} />
-          Add a memory
-        </button>
+        <div className="photo-actions">
+          <button
+            className="quiet-button"
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera size={17} />
+            Take photo
+          </button>
+          <button
+            className="quiet-button"
+            type="button"
+            onClick={() => inputRef.current?.click()}
+          >
+            <ImagePlus size={17} />
+            Add photos
+          </button>
+        </div>
       </div>
+      <input
+        ref={cameraInputRef}
+        className="sr-only"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFiles}
+      />
       <input
         ref={inputRef}
         className="sr-only"
