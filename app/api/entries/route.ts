@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDatabaseName, getMongoClient, hasMongoConfig } from "@/lib/mongodb";
+import { verifyOwnerPattern } from "@/lib/owner-auth";
 import { normalizeEntries } from "@/lib/storage";
 import { sortEntries } from "@/lib/diary";
 import type { DiaryEntry } from "@/types/diary";
@@ -34,6 +35,20 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  if (!process.env.OWNER_PATTERN) {
+    return NextResponse.json(
+      { entries: [], message: "Owner pattern is not configured." },
+      { status: 503 }
+    );
+  }
+
+  if (!verifyOwnerPattern(request.headers.get("x-owner-pattern") ?? "")) {
+    return NextResponse.json(
+      { entries: [], message: "Owner unlock is required." },
+      { status: 401 }
+    );
+  }
+
   if (!hasMongoConfig()) {
     return NextResponse.json(
       { entries: [], message: "MongoDB is not configured." },

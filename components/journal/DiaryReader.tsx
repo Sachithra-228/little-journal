@@ -23,6 +23,7 @@ interface DiaryReaderProps {
   onEdit: (entry: DiaryEntry) => void;
   onDelete: (id: string) => void;
   onNavigate: (entry: DiaryEntry) => void;
+  canManage: boolean;
 }
 
 export function DiaryReader({
@@ -31,7 +32,8 @@ export function DiaryReader({
   onClose,
   onEdit,
   onDelete,
-  onNavigate
+  onNavigate,
+  canManage
 }: DiaryReaderProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const orderedEntries = useMemo(() => sortEntries(entries), [entries]);
@@ -122,16 +124,18 @@ export function DiaryReader({
               <ChevronRight size={17} />
             </button>
           </div>
-          <div className="reader-actions">
-            <button type="button" onClick={() => onEdit(entry)}>
-              <Pencil size={16} />
-              Edit
-            </button>
-            <button type="button" onClick={() => setConfirmingDelete(true)}>
-              <Trash2 size={16} />
-              Delete
-            </button>
-          </div>
+          {canManage ? (
+            <div className="reader-actions">
+              <button type="button" onClick={() => onEdit(entry)}>
+                <Pencil size={16} />
+                Edit
+              </button>
+              <button type="button" onClick={() => setConfirmingDelete(true)}>
+                <Trash2 size={16} />
+                Delete
+              </button>
+            </div>
+          ) : null}
         </footer>
 
         {confirmingDelete ? (

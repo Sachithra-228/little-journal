@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Moon, PenLine, Search, Sun } from "lucide-react";
+import { Lock, Moon, PenLine, Search, Sun, Unlock } from "lucide-react";
 import { DiaryEditor } from "@/components/journal/DiaryEditor";
 import { DiaryReader } from "@/components/journal/DiaryReader";
 import { DiaryTimeline } from "@/components/journal/DiaryTimeline";
 import { EmptyJournal } from "@/components/journal/EmptyJournal";
 import { MemoryExplorer } from "@/components/journal/MemoryExplorer";
+import { OwnerUnlock } from "@/components/journal/OwnerUnlock";
 import {
   createEntry,
   deleteEntry,
@@ -73,8 +74,10 @@ export function JournalApp() {
   const [loaded, setLoaded] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showExplorer, setShowExplorer] = useState(false);
+  const [showUnlock, setShowUnlock] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [notice, setNotice] = useState("");
+  const [ownerPattern, setOwnerPattern] = useState("");
   const [filters, setFilters] = useState<MemoryFilters>({
     query: "",
     mood: "All",
@@ -94,6 +97,8 @@ export function JournalApp() {
     setEntries(localEntries);
     setLoaded(true);
     setDarkMode(window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const savedOwnerPattern = window.sessionStorage.getItem("little-journal-owner-pattern") ?? "";
+    setOwnerPattern(savedOwnerPattern);
 
     fetchRemoteEntries().then((result) => {
       if (cancelled) {
@@ -113,8 +118,8 @@ export function JournalApp() {
         return;
       }
 
-      if (localEntries.length) {
-        saveRemoteEntries(localEntries);
+      if (localEntries.length && savedOwnerPattern) {
+        saveRemoteEntries(localEntries, savedOwnerPattern);
       }
     });
 
@@ -129,16 +134,16 @@ export function JournalApp() {
       saveEntries(entries);
     }
 
-    if (!loaded || !remoteReadyRef.current) {
+    if (!loaded || !remoteReadyRef.current || !ownerPattern) {
       return;
     }
 
     const syncTimer = window.setTimeout(() => {
-      saveRemoteEntries(entries);
+      saveRemoteEntries(entries, ownerPattern);
     }, 650);
 
     return () => window.clearTimeout(syncTimer);
-  }, [entries, loaded]);
+  }, [entries, loaded, ownerPattern]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -165,13 +170,38 @@ export function JournalApp() {
     [entries, filters]
   );
   const stats = useMemo(() => getMemoryStats(entries), [entries]);
+  const isOwner = Boolean(ownerPattern);
 
   function scrollToEditor() {
+    if (!isOwner) {
+      setShowUnlock(true);
+      return;
+    }
+
     editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function handleUnlock(pattern: string) {
+    window.sessionStorage.setItem("little-journal-owner-pattern", pattern);
+    setOwnerPattern(pattern);
+    setShowUnlock(false);
+    setNotice("Owner tools unlocked.");
+  }
+
+  function handleLock() {
+    window.sessionStorage.removeItem("little-journal-owner-pattern");
+    setOwnerPattern("");
+    setEditingEntry(null);
+    setNotice("Owner tools locked.");
+  }
+
   async function syncEntries(nextEntries: DiaryEntry[], successMessage: string) {
-    const result = await saveRemoteEntries(nextEntries);
+    if (!ownerPattern) {
+      setNotice("Unlock owner tools before saving changes.");
+      return;
+    }
+
+    const result = await saveRemoteEntries(nextEntries, ownerPattern);
     if (result.ok) {
       remoteReadyRef.current = true;
       setNotice(successMessage);
@@ -182,6 +212,11 @@ export function JournalApp() {
   }
 
   async function handleSave(draft: DiaryDraft) {
+    if (!isOwner) {
+      setShowUnlock(true);
+      return;
+    }
+
     let compressedDraft: DiaryDraft;
 
     try {
@@ -221,6 +256,11 @@ export function JournalApp() {
   }
 
   function handleDelete(id: string) {
+    if (!isOwner) {
+      setShowUnlock(true);
+      return;
+    }
+
     const nextEntries = deleteEntry(entries, id);
     setEntries(nextEntries);
     saveEntries(nextEntries);
@@ -246,6 +286,15 @@ export function JournalApp() {
           Little Journal
         </a>
         <div className="nav-actions">
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={isOwner ? "Lock owner tools" : "Unlock owner tools"}
+            title={isOwner ? "Lock owner tools" : "Unlock owner tools"}
+            onClick={isOwner ? handleLock : () => setShowUnlock(true)}
+          >
+            {isOwner ? <Unlock size={18} /> : <Lock size={18} />}
+          </button>
           <button
             className="icon-button"
             type="button"
@@ -290,29 +339,44 @@ export function JournalApp() {
             </div>
             <p className="hero-question">What happened today?</p>
             <button className="primary-button" type="button" onClick={scrollToEditor}>
-              <PenLine size={18} />
-              Start writing
+              {isOwner ? <PenLine size={18} /> : <Lock size={18} />}
+              {isOwner ? "Start writing" : "Owner unlock"}
             </button>
           </motion.div>
 
-          <div ref={editorRef} className="quick-editor-frame">
-            <DiaryEditor
-              key={editingEntry?.id ?? selectedDate}
-              selectedDate={selectedDate}
-              existingEntry={editingEntry ? null : existingForDate}
-              editingEntry={editingEntry}
-              onDateChange={(date) => {
-                setSelectedDate(date);
-                setEditingEntry(null);
-              }}
-              onSave={handleSave}
-              onViewEntry={(entry) => setActiveEntryId(entry.id)}
-              onEditEntry={(entry) => {
-                setEditingEntry(entry);
-                setSelectedDate(entry.date);
-              }}
-            />
-          </div>
+          {isOwner ? (
+            <div ref={editorRef} className="quick-editor-frame">
+              <DiaryEditor
+                key={editingEntry?.id ?? selectedDate}
+                selectedDate={selectedDate}
+                existingEntry={editingEntry ? null : existingForDate}
+                editingEntry={editingEntry}
+                onDateChange={(date) => {
+                  setSelectedDate(date);
+                  setEditingEntry(null);
+                }}
+                onSave={handleSave}
+                onViewEntry={(entry) => setActiveEntryId(entry.id)}
+                onEditEntry={(entry) => {
+                  setEditingEntry(entry);
+                  setSelectedDate(entry.date);
+                }}
+              />
+            </div>
+          ) : (
+            <div ref={editorRef} className="quick-editor-frame">
+              <section className="diary-page locked-owner-panel">
+                <Lock size={22} />
+                <p className="eyebrow">Read only</p>
+                <h2>Memories are protected.</h2>
+                <p>Unlock owner tools to write, edit, or delete diary pages.</p>
+                <button className="primary-button" type="button" onClick={() => setShowUnlock(true)}>
+                  <Lock size={18} />
+                  Owner unlock
+                </button>
+              </section>
+            </div>
+          )}
         </div>
       </section>
 
@@ -327,6 +391,12 @@ export function JournalApp() {
           >
             {notice}
           </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showUnlock ? (
+          <OwnerUnlock onClose={() => setShowUnlock(false)} onUnlock={handleUnlock} />
         ) : null}
       </AnimatePresence>
 
@@ -358,7 +428,7 @@ export function JournalApp() {
 
       <div ref={storyRef} className="section-shell story-shell">
         {entries.length === 0 ? (
-          <EmptyJournal onWrite={scrollToEditor} onLoadSamples={loadSamples} />
+          <EmptyJournal onWrite={scrollToEditor} onLoadSamples={loadSamples} canWrite={isOwner} />
         ) : (
           <DiaryTimeline
             entries={visibleEntries}
@@ -382,6 +452,7 @@ export function JournalApp() {
             }}
             onDelete={handleDelete}
             onNavigate={(entry) => setActiveEntryId(entry.id)}
+            canManage={isOwner}
           />
         ) : null}
       </AnimatePresence>

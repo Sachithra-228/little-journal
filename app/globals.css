@@ -343,6 +343,25 @@ img {
   font-size: clamp(1.2rem, 2vw, 1.48rem);
 }
 
+.locked-owner-panel {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 16px;
+  min-height: 380px;
+}
+
+.locked-owner-panel p:not(.eyebrow) {
+  max-width: 520px;
+  margin: 0;
+  color: rgb(var(--muted));
+  font-size: 1.05rem;
+}
+
+.locked-owner-panel .primary-button {
+  margin-top: 8px;
+}
+
 .reflection-strip {
   position: relative;
   z-index: 1;
@@ -1031,6 +1050,90 @@ input::placeholder {
 .confirm-delete > div:last-child {
   display: flex;
   gap: 10px;
+}
+
+.unlock-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(20 17 14 / 0.58);
+  backdrop-filter: blur(14px);
+}
+
+.unlock-panel {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  width: min(390px, 100%);
+  border: 1px solid rgb(var(--line));
+  border-radius: 8px;
+  padding: 34px 28px 28px;
+  background: rgb(var(--surface));
+  box-shadow: 0 30px 120px rgb(0 0 0 / 0.25);
+  text-align: center;
+}
+
+.unlock-panel h2,
+.unlock-panel p {
+  margin: 0;
+}
+
+.unlock-panel h2 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 2.2rem;
+}
+
+.unlock-panel p {
+  color: rgb(var(--muted));
+}
+
+.pattern-dots {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 12px;
+  margin: 6px 0;
+}
+
+.pattern-dot {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  aspect-ratio: 1;
+  border: 1px solid rgb(var(--line));
+  border-radius: 999px;
+  color: rgb(var(--muted));
+  background: rgb(var(--surface-strong));
+}
+
+.pattern-dot span {
+  display: grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: currentColor;
+  color: transparent;
+}
+
+.pattern-dot.active {
+  border-color: rgb(var(--accent));
+  color: rgb(var(--surface));
+  background: rgb(var(--accent));
+}
+
+.pattern-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.pattern-actions button {
+  flex: 1;
 }
 
 .journal-footer {

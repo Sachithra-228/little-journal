@@ -8,6 +8,10 @@ export type RemoteSaveResult =
   | { ok: true }
   | { ok: false; reason: string };
 
+export type OwnerVerifyResult =
+  | { ok: true }
+  | { ok: false; reason: string };
+
 export async function fetchRemoteEntries(): Promise<RemoteStorageResult> {
   try {
     const response = await fetch("/api/entries", { cache: "no-store" });
@@ -22,7 +26,31 @@ export async function fetchRemoteEntries(): Promise<RemoteStorageResult> {
   }
 }
 
-export async function saveRemoteEntries(entries: DiaryEntry[]): Promise<RemoteSaveResult> {
+export async function verifyOwnerPattern(pattern: string): Promise<OwnerVerifyResult> {
+  try {
+    const response = await fetch("/api/owner", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ pattern })
+    });
+
+    if (response.ok) {
+      return { ok: true };
+    }
+
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    return { ok: false, reason: data?.message ?? "Unlock failed." };
+  } catch {
+    return { ok: false, reason: "Could not check unlock pattern." };
+  }
+}
+
+export async function saveRemoteEntries(
+  entries: DiaryEntry[],
+  ownerPattern: string
+): Promise<RemoteSaveResult> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 10000);
 
@@ -30,7 +58,8 @@ export async function saveRemoteEntries(entries: DiaryEntry[]): Promise<RemoteSa
     const response = await fetch("/api/entries", {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-owner-pattern": ownerPattern
       },
       body: JSON.stringify({ entries }),
       signal: controller.signal
