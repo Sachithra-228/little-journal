@@ -4,6 +4,10 @@ export type RemoteStorageResult =
   | { ok: true; entries: DiaryEntry[] }
   | { ok: false; reason: string };
 
+export type RemoteSaveResult =
+  | { ok: true }
+  | { ok: false; reason: string };
+
 export async function fetchRemoteEntries(): Promise<RemoteStorageResult> {
   try {
     const response = await fetch("/api/entries", { cache: "no-store" });
@@ -18,7 +22,7 @@ export async function fetchRemoteEntries(): Promise<RemoteStorageResult> {
   }
 }
 
-export async function saveRemoteEntries(entries: DiaryEntry[]) {
+export async function saveRemoteEntries(entries: DiaryEntry[]): Promise<RemoteSaveResult> {
   try {
     const response = await fetch("/api/entries", {
       method: "PUT",
@@ -28,8 +32,13 @@ export async function saveRemoteEntries(entries: DiaryEntry[]) {
       body: JSON.stringify({ entries })
     });
 
-    return response.ok;
+    if (response.ok) {
+      return { ok: true };
+    }
+
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    return { ok: false, reason: data?.message ?? "Could not sync with MongoDB." };
   } catch {
-    return false;
+    return { ok: false, reason: "Could not reach MongoDB sync." };
   }
 }

@@ -169,32 +169,52 @@ export function JournalApp() {
     editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  async function syncEntries(nextEntries: DiaryEntry[], successMessage: string) {
+    const result = await saveRemoteEntries(nextEntries);
+    if (result.ok) {
+      remoteReadyRef.current = true;
+      setNotice(successMessage);
+      return;
+    }
+
+    setNotice("Saved on this device. MongoDB sync needs attention.");
+  }
+
   function handleSave(draft: DiaryDraft) {
     if (editingEntry) {
       const updated = updateEntry(editingEntry, draft);
-      setEntries((current) =>
-        sortEntries(current.map((entry) => (entry.id === updated.id ? updated : entry)))
+      const nextEntries = sortEntries(
+        entries.map((entry) => (entry.id === updated.id ? updated : entry))
       );
+      setEntries(nextEntries);
+      saveEntries(nextEntries);
       setEditingEntry(null);
       setActiveEntryId(updated.id);
-      setNotice("Memory updated.");
+      setNotice("Updated your diary. Syncing...");
+      syncEntries(nextEntries, "Updated and saved to your diary.");
       return;
     }
 
     const entry = createEntry(draft);
-    setEntries((current) => sortEntries([entry, ...current]));
+    const nextEntries = sortEntries([entry, ...entries]);
+    setEntries(nextEntries);
+    saveEntries(nextEntries);
     setActiveEntryId(entry.id);
-    setNotice("Saved to your story.");
+    setNotice("Saved it to your diary. Syncing...");
+    syncEntries(nextEntries, "Saved it to your diary.");
     window.setTimeout(() => {
       storyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
   }
 
   function handleDelete(id: string) {
-    setEntries((current) => deleteEntry(current, id));
+    const nextEntries = deleteEntry(entries, id);
+    setEntries(nextEntries);
+    saveEntries(nextEntries);
     setActiveEntryId(null);
     setEditingEntry(null);
-    setNotice("Memory deleted.");
+    setNotice("Memory deleted. Syncing...");
+    syncEntries(nextEntries, "Memory deleted from your diary.");
   }
 
   function loadSamples() {
