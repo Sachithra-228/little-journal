@@ -24,9 +24,10 @@ export async function GET() {
       .toArray();
 
     return NextResponse.json({ entries: normalizeEntries(entries) });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown MongoDB error.";
     return NextResponse.json(
-      { entries: [], message: "Could not load memories from MongoDB." },
+      { entries: [], message: `Could not load memories from MongoDB: ${message}` },
       { status: 500 }
     );
   }
@@ -65,9 +66,10 @@ export async function PUT(request: Request) {
     );
 
     return NextResponse.json({ entries });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown MongoDB error.";
     return NextResponse.json(
-      { entries: [], message: "Could not save memories to MongoDB." },
+      { entries: [], message: `Could not save memories to MongoDB: ${message}` },
       { status: 500 }
     );
   }

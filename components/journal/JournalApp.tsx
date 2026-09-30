@@ -17,6 +17,7 @@ import {
   sortEntries,
   updateEntry
 } from "@/lib/diary";
+import { compressDiaryImages } from "@/lib/client-images";
 import { getEntries, saveEntries } from "@/lib/storage";
 import { fetchRemoteEntries, saveRemoteEntries } from "@/lib/remote-storage";
 import { formatLongDate, toDateInputValue } from "@/lib/utils";
@@ -147,7 +148,7 @@ export function JournalApp() {
     if (!notice) {
       return;
     }
-    const timer = window.setTimeout(() => setNotice(""), 2600);
+    const timer = window.setTimeout(() => setNotice(""), 5200);
     return () => window.clearTimeout(timer);
   }, [notice]);
 
@@ -177,12 +178,24 @@ export function JournalApp() {
       return;
     }
 
-    setNotice("Saved on this device. MongoDB sync needs attention.");
+    setNotice(`Saved on this device. MongoDB sync failed: ${result.reason}`);
   }
 
-  function handleSave(draft: DiaryDraft) {
+  async function handleSave(draft: DiaryDraft) {
+    let compressedDraft: DiaryDraft;
+
+    try {
+      compressedDraft = {
+        ...draft,
+        images: await compressDiaryImages(draft.images)
+      };
+    } catch {
+      setNotice("Could not prepare the photo. Try removing it and adding it again.");
+      return;
+    }
+
     if (editingEntry) {
-      const updated = updateEntry(editingEntry, draft);
+      const updated = updateEntry(editingEntry, compressedDraft);
       const nextEntries = sortEntries(
         entries.map((entry) => (entry.id === updated.id ? updated : entry))
       );
@@ -195,7 +208,7 @@ export function JournalApp() {
       return;
     }
 
-    const entry = createEntry(draft);
+    const entry = createEntry(compressedDraft);
     const nextEntries = sortEntries([entry, ...entries]);
     setEntries(nextEntries);
     saveEntries(nextEntries);

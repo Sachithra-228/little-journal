@@ -304,11 +304,16 @@ img {
   left: 50%;
   z-index: 60;
   transform: translateX(-50%);
+  width: max-content;
+  max-width: min(620px, calc(100% - 32px));
   border: 1px solid rgb(var(--line));
-  border-radius: 999px;
-  padding: 10px 18px;
+  border-radius: 8px;
+  padding: 14px 18px;
   background: rgb(var(--surface));
   box-shadow: 0 16px 48px rgb(var(--shadow) / 0.16);
+  color: rgb(var(--ink));
+  font-weight: 700;
+  text-align: center;
 }
 
 .quick-editor-frame {
