@@ -202,7 +202,7 @@ export function JournalApp() {
       setEntries(nextEntries);
       saveEntries(nextEntries);
       setEditingEntry(null);
-      setActiveEntryId(updated.id);
+      setActiveEntryId(null);
       setNotice("Updated your diary. Syncing...");
       syncEntries(nextEntries, "Updated and saved to your diary.");
       return;
