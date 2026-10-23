@@ -881,6 +881,12 @@ input::placeholder {
   background: rgb(var(--accent) / 0.24);
 }
 
+.calendar-day.can-write:hover {
+  transform: translateY(-1px);
+  border-color: rgb(var(--accent) / 0.45);
+  color: rgb(var(--ink));
+}
+
 .calendar-day.selected,
 .calendar-day.selected:hover {
   border-color: rgb(var(--accent));
@@ -949,6 +955,17 @@ input::placeholder {
 .calendar-story-text p {
   margin: 0 0 1em;
   white-space: pre-line;
+}
+
+.calendar-story-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.calendar-story-empty > p {
+  margin: 12px 0 22px;
+  color: rgb(var(--muted));
 }
 
 .entry-meta,

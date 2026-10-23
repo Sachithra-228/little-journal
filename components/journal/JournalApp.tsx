@@ -434,6 +434,17 @@ export function JournalApp() {
             entries={visibleEntries}
             totalEntries={entries.length}
             onOpen={(entry) => setActiveEntryId(entry.id)}
+            onEdit={(entry) => {
+              setEditingEntry(entry);
+              setSelectedDate(entry.date);
+              window.setTimeout(scrollToEditor, 80);
+            }}
+            onWrite={(date) => {
+              setEditingEntry(null);
+              setSelectedDate(date);
+              window.setTimeout(scrollToEditor, 80);
+            }}
+            canManage={isOwner}
           />
         )}
       </div>

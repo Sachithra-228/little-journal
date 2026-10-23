@@ -15,7 +15,7 @@ import { MoodSelector } from "@/components/journal/MoodSelector";
 import { PhotoUploader } from "@/components/journal/PhotoUploader";
 import { DatePicker } from "@/components/journal/DatePicker";
 import { starterTags } from "@/lib/diary";
-import { formatLongDate, formatWeekday } from "@/lib/utils";
+import { formatLongDate, formatWeekday, toDateInputValue } from "@/lib/utils";
 import type {
   DiaryDraft,
   DiaryEntry,
@@ -142,7 +142,13 @@ export function DiaryEditor({
     >
       <div className="editor-date-row">
         <div>
-          <p className="eyebrow">{editingEntry ? "Revisiting" : "Today's page"}</p>
+          <p className="eyebrow">
+            {editingEntry
+              ? "Revisiting"
+              : selectedDate === toDateInputValue()
+                ? "Today's page"
+                : "Earlier page"}
+          </p>
           <h2 id="editor-heading">{dateLabel}</h2>
           <span>{formatWeekday(selectedDate)}</span>
         </div>

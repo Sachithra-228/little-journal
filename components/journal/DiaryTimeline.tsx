@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, ChevronLeft, ChevronRight, MapPin, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, MapPin, PenLine, Pencil, X } from "lucide-react";
 import Image from "next/image";
 import { cn, formatLongDate, monthKey, parseLocalDate, toDateInputValue } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
@@ -11,11 +11,21 @@ interface DiaryTimelineProps {
   entries: DiaryEntry[];
   totalEntries: number;
   onOpen: (entry: DiaryEntry) => void;
+  onEdit: (entry: DiaryEntry) => void;
+  onWrite: (date: string) => void;
+  canManage: boolean;
 }
 
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function DiaryTimeline({ entries, totalEntries, onOpen }: DiaryTimelineProps) {
+export function DiaryTimeline({
+  entries,
+  totalEntries,
+  onOpen,
+  onEdit,
+  onWrite,
+  canManage
+}: DiaryTimelineProps) {
   const today = toDateInputValue();
   const [viewMonth, setViewMonth] = useState(() => monthKey(entries[0]?.date ?? today));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -27,6 +37,7 @@ export function DiaryTimeline({ entries, totalEntries, onOpen }: DiaryTimelinePr
   );
   const { leadingBlanks, days } = useMemo(() => buildMonth(viewMonth), [viewMonth]);
   const selectedEntry = selectedDate ? entriesByDate.get(selectedDate) ?? null : null;
+  const emptySelectedDate = canManage && selectedDate && !selectedEntry ? selectedDate : null;
   const monthCount = days.filter((day) => entriesByDate.has(day)).length;
 
   if (entries.length === 0) {
@@ -101,6 +112,7 @@ export function DiaryTimeline({ entries, totalEntries, onOpen }: DiaryTimelinePr
             ))}
             {days.map((day) => {
               const entry = entriesByDate.get(day);
+              const canWrite = canManage && !entry && day <= today;
 
               return (
                 <button
@@ -109,11 +121,12 @@ export function DiaryTimeline({ entries, totalEntries, onOpen }: DiaryTimelinePr
                   className={cn(
                     "calendar-day",
                     entry && "has-memory",
+                    canWrite && "can-write",
                     day === today && "today",
                     day === selectedDate && "selected"
                   )}
-                  disabled={!entry}
-                  aria-pressed={entry ? day === selectedDate : undefined}
+                  disabled={!entry && !canWrite}
+                  aria-pressed={entry || canWrite ? day === selectedDate : undefined}
                   aria-label={
                     entry ? `${formatLongDate(day)}: ${entry.title}` : formatLongDate(day)
                   }
@@ -193,13 +206,56 @@ export function DiaryTimeline({ entries, totalEntries, onOpen }: DiaryTimelinePr
                 ))}
               </div>
 
+              <div className="calendar-story-actions">
+                <button
+                  className="primary-button small"
+                  type="button"
+                  onClick={() => onOpen(selectedEntry)}
+                >
+                  <BookOpen size={16} />
+                  Open full page
+                </button>
+                {canManage ? (
+                  <button
+                    className="quiet-button"
+                    type="button"
+                    onClick={() => onEdit(selectedEntry)}
+                  >
+                    <Pencil size={16} />
+                    Edit
+                  </button>
+                ) : null}
+              </div>
+            </motion.article>
+          ) : emptySelectedDate ? (
+            <motion.article
+              key={`empty-${emptySelectedDate}`}
+              ref={storyRef}
+              className="calendar-story calendar-story-empty"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 24 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              <button
+                className="reader-close"
+                type="button"
+                aria-label="Close"
+                onClick={() => setSelectedDate(null)}
+              >
+                <X size={20} />
+              </button>
+
+              <time dateTime={emptySelectedDate}>{formatLongDate(emptySelectedDate)}</time>
+              <h3>No memory for this day yet.</h3>
+              <p>Write it now and it will appear here on the calendar.</p>
               <button
                 className="primary-button small"
                 type="button"
-                onClick={() => onOpen(selectedEntry)}
+                onClick={() => onWrite(emptySelectedDate)}
               >
-                <BookOpen size={16} />
-                Open full page
+                <PenLine size={16} />
+                Write this day
               </button>
             </motion.article>
           ) : null}
