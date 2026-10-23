@@ -1,15 +1,21 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BookOpen, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { ShareMemory } from "@/components/journal/ShareMemory";
 import { getSharedEntry, shareExcerpt } from "@/lib/shared-entry";
 import { formatLongDate } from "@/lib/utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// One fixed paper theme: phone and in-app browsers mixed dark text into light backgrounds.
+export const viewport: Viewport = {
+  colorScheme: "only light",
+  themeColor: "#f8f4eb"
+};
 
 interface MemoryPageProps {
   params: Promise<{ date: string }>;
@@ -113,10 +119,6 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
         ) : null}
 
         <footer className="reader-footer">
-          <Link href="/" className="quiet-button">
-            <BookOpen size={16} />
-            Read more memories
-          </Link>
           <ShareMemory entry={entry} buttonClassName="primary-button small" align="end" />
         </footer>
       </article>

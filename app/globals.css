@@ -1260,19 +1260,6 @@ input::placeholder {
   background: rgb(var(--paper));
 }
 
-@media (prefers-color-scheme: dark) {
-  .shared-memory {
-    --paper: 26 27 25;
-    --ink: 242 231 213;
-    --muted: 178 164 143;
-    --accent: 196 139 101;
-    --line: 76 70 62;
-    --surface: 35 35 32;
-    --surface-strong: 42 40 36;
-    --shadow: 0 0 0;
-  }
-}
-
 .shared-memory-page {
   width: min(940px, calc(100% - 32px));
   max-height: none;
@@ -1282,12 +1269,7 @@ input::placeholder {
 
 .shared-memory-page .reader-footer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.shared-memory-page .reader-footer a {
-  text-decoration: none;
+  justify-content: flex-end;
 }
 
 .unlock-backdrop {
