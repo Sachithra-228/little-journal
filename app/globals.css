@@ -1260,7 +1260,7 @@ input::placeholder {
   background: rgb(var(--paper));
 }
 
-.shared-memory-page {
+.reader-page.shared-memory-page {
   width: min(940px, calc(100% - 32px));
   max-height: none;
   margin: 12px auto 0;
