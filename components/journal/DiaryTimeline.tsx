@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, ChevronLeft, ChevronRight, MapPin, PenLine, Pencil, X } from "lucide-react";
 import Image from "next/image";
+import { ShareMemory } from "@/components/journal/ShareMemory";
 import { cn, formatLongDate, monthKey, parseLocalDate, toDateInputValue } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
 
@@ -215,6 +216,7 @@ export function DiaryTimeline({
                   <BookOpen size={16} />
                   Open full page
                 </button>
+                <ShareMemory entry={selectedEntry} buttonClassName="quiet-button" />
                 {canManage ? (
                   <button
                     className="quiet-button"

@@ -12,6 +12,7 @@ import {
   X
 } from "lucide-react";
 import Image from "next/image";
+import { ShareMemory } from "@/components/journal/ShareMemory";
 import { sortEntries } from "@/lib/diary";
 import { formatLongDate, formatWeekday } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
@@ -124,18 +125,21 @@ export function DiaryReader({
               <ChevronRight size={17} />
             </button>
           </div>
-          {canManage ? (
-            <div className="reader-actions">
-              <button type="button" onClick={() => onEdit(entry)}>
-                <Pencil size={16} />
-                Edit
-              </button>
-              <button type="button" onClick={() => setConfirmingDelete(true)}>
-                <Trash2 size={16} />
-                Delete
-              </button>
-            </div>
-          ) : null}
+          <div className="reader-actions">
+            <ShareMemory entry={entry} align="end" />
+            {canManage ? (
+              <>
+                <button type="button" onClick={() => onEdit(entry)}>
+                  <Pencil size={16} />
+                  Edit
+                </button>
+                <button type="button" onClick={() => setConfirmingDelete(true)}>
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </>
+            ) : null}
+          </div>
         </footer>
 
         {confirmingDelete ? (

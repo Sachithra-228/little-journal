@@ -259,6 +259,7 @@ img {
 .section-heading h2,
 .diary-page h2,
 .empty-journal h2,
+.reader-header h1,
 .reader-header h2 {
   margin: 0;
   font-family: var(--font-serif), Georgia, serif;
@@ -1066,6 +1067,7 @@ input::placeholder {
   color: rgb(var(--muted));
 }
 
+.reader-header h1,
 .reader-header h2 {
   max-width: 820px;
   margin-top: 8px;
@@ -1176,6 +1178,116 @@ input::placeholder {
 .confirm-delete > div:last-child {
   display: flex;
   gap: 10px;
+}
+
+.share-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.share-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 2px;
+  width: min(250px, calc(100vw - 48px));
+  border: 1px solid rgb(var(--line));
+  border-radius: 8px;
+  padding: 8px;
+  background: rgb(var(--surface));
+  box-shadow: 0 18px 60px rgb(var(--shadow) / 0.2);
+  animation: share-menu-in 160ms ease-out;
+}
+
+.share-menu.align-end {
+  right: 0;
+  left: auto;
+}
+
+.share-heading {
+  margin: 0;
+  padding: 6px 12px 6px;
+  color: rgb(var(--muted));
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.share-menu .share-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: rgb(var(--ink));
+  background: transparent;
+  font-size: 0.92rem;
+  text-align: left;
+  text-decoration: none;
+}
+
+.share-menu .share-option:hover {
+  background: rgb(var(--accent) / 0.1);
+}
+
+.share-menu .share-option svg {
+  color: rgb(var(--accent));
+}
+
+.share-menu hr {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid rgb(var(--line));
+  margin: 4px 0;
+}
+
+@keyframes share-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.shared-memory {
+  min-height: 100vh;
+  padding-bottom: 68px;
+  color: rgb(var(--ink));
+  background: rgb(var(--paper));
+}
+
+@media (prefers-color-scheme: dark) {
+  .shared-memory {
+    --paper: 26 27 25;
+    --ink: 242 231 213;
+    --muted: 178 164 143;
+    --accent: 196 139 101;
+    --line: 76 70 62;
+    --surface: 35 35 32;
+    --surface-strong: 42 40 36;
+    --shadow: 0 0 0;
+  }
+}
+
+.shared-memory-page {
+  width: min(940px, calc(100% - 32px));
+  max-height: none;
+  margin: 12px auto 0;
+  overflow: visible;
+}
+
+.shared-memory-page .reader-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.shared-memory-page .reader-footer a {
+  text-decoration: none;
 }
 
 .unlock-backdrop {
