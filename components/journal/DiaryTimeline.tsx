@@ -201,6 +201,21 @@ export function DiaryTimeline({
                 </div>
               ) : null}
 
+              {selectedEntry.images.length > 1 ? (
+                <div className="calendar-story-photos">
+                  {selectedEntry.images.slice(1).map((image) => (
+                    <button
+                      key={image.id}
+                      type="button"
+                      aria-label="Open full page to see this photo"
+                      onClick={() => onOpen(selectedEntry)}
+                    >
+                      <Image src={image.dataUrl} alt={image.alt} fill sizes="90px" unoptimized />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="calendar-story-text">
                 {selectedEntry.content.split(/\n{2,}/).map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>

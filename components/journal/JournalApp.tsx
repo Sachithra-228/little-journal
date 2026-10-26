@@ -20,7 +20,7 @@ import {
 } from "@/lib/diary";
 import { compressDiaryImages } from "@/lib/client-images";
 import { getEntries, saveEntries } from "@/lib/storage";
-import { fetchRemoteEntries, saveRemoteEntries } from "@/lib/remote-storage";
+import { deleteRemoteEntry, fetchRemoteEntries, saveRemoteEntry } from "@/lib/remote-storage";
 import { formatLongDate, toDateInputValue } from "@/lib/utils";
 import type { DiaryDraft, DiaryEntry, MemoryFilters } from "@/types/diary";
 
@@ -87,7 +87,6 @@ export function JournalApp() {
 
   const editorRef = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLDivElement>(null);
-  const remoteReadyRef = useRef(false);
 
   useEffect(() => {
     const localEntries = sortEntries(getEntries());
@@ -109,8 +108,6 @@ export function JournalApp() {
         return;
       }
 
-      remoteReadyRef.current = true;
-
       if (result.entries.length) {
         const remoteEntries = sortEntries(result.entries);
         setEntries(remoteEntries);
@@ -119,7 +116,7 @@ export function JournalApp() {
       }
 
       if (localEntries.length && savedOwnerPattern) {
-        saveRemoteEntries(localEntries, savedOwnerPattern);
+        uploadLocalEntries(localEntries, savedOwnerPattern);
       }
     });
 
@@ -133,17 +130,7 @@ export function JournalApp() {
     if (loaded) {
       saveEntries(entries);
     }
-
-    if (!loaded || !remoteReadyRef.current || !ownerPattern) {
-      return;
-    }
-
-    const syncTimer = window.setTimeout(() => {
-      saveRemoteEntries(entries, ownerPattern);
-    }, 650);
-
-    return () => window.clearTimeout(syncTimer);
-  }, [entries, loaded, ownerPattern]);
+  }, [entries, loaded]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -195,20 +182,35 @@ export function JournalApp() {
     setNotice("Owner tools locked.");
   }
 
-  async function syncEntries(nextEntries: DiaryEntry[], successMessage: string) {
+  async function syncEntry(entry: DiaryEntry, successMessage: string) {
     if (!ownerPattern) {
       setNotice("Unlock owner tools before saving changes.");
       return;
     }
 
-    const result = await saveRemoteEntries(nextEntries, ownerPattern);
+    const result = await saveRemoteEntry(entry, ownerPattern);
     if (result.ok) {
-      remoteReadyRef.current = true;
+      // The server copy links to its photos, which keeps browser storage small.
+      setEntries((current) =>
+        current.map((item) => (item.id === result.entry.id ? result.entry : item))
+      );
       setNotice(successMessage);
       return;
     }
 
     setNotice(`Saved on this device. MongoDB sync failed: ${result.reason}`);
+  }
+
+  async function syncDelete(id: string, successMessage: string) {
+    if (!ownerPattern) {
+      setNotice("Unlock owner tools before saving changes.");
+      return;
+    }
+
+    const result = await deleteRemoteEntry(id, ownerPattern);
+    setNotice(
+      result.ok ? successMessage : `Deleted on this device. MongoDB sync failed: ${result.reason}`
+    );
   }
 
   async function handleSave(draft: DiaryDraft) {
@@ -239,7 +241,7 @@ export function JournalApp() {
       setEditingEntry(null);
       setActiveEntryId(null);
       setNotice("Updated your diary. Syncing...");
-      syncEntries(nextEntries, "Updated and saved to your diary.");
+      syncEntry(updated, "Updated and saved to your diary.");
       return;
     }
 
@@ -249,7 +251,7 @@ export function JournalApp() {
     saveEntries(nextEntries);
     setActiveEntryId(entry.id);
     setNotice("Saved it to your diary. Syncing...");
-    syncEntries(nextEntries, "Saved it to your diary.");
+    syncEntry(entry, "Saved it to your diary.");
     window.setTimeout(() => {
       storyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
@@ -267,7 +269,7 @@ export function JournalApp() {
     setActiveEntryId(null);
     setEditingEntry(null);
     setNotice("Memory deleted. Syncing...");
-    syncEntries(nextEntries, "Memory deleted from your diary.");
+    syncDelete(id, "Memory deleted from your diary.");
   }
 
   function loadSamples() {
@@ -473,6 +475,13 @@ export function JournalApp() {
       </footer>
     </main>
   );
+}
+
+async function uploadLocalEntries(entries: DiaryEntry[], ownerPattern: string) {
+  // One memory per request keeps each upload well under the server's size limit.
+  for (const entry of entries) {
+    await saveRemoteEntry(entry, ownerPattern);
+  }
 }
 
 function IntroOverlay({ todayLabel }: { todayLabel: string }) {

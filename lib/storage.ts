@@ -40,7 +40,11 @@ export function saveEntries(entries: DiaryEntry[]) {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch {
+    // Browser storage is full; MongoDB still holds the diary.
+  }
 }
 
 export function getEntryByDate(date: string) {

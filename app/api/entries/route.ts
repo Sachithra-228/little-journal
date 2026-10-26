@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { getDatabaseName, getMongoClient, hasMongoConfig } from "@/lib/mongodb";
+import { getEntriesCollection, isStoredImageUrl, withImageUrls } from "@/lib/entries-db";
+import { hasMongoConfig } from "@/lib/mongodb";
 import { verifyOwnerPattern } from "@/lib/owner-auth";
-import { normalizeEntries } from "@/lib/storage";
-import { sortEntries } from "@/lib/diary";
+import { normalizeEntries, normalizeEntry } from "@/lib/storage";
 import type { DiaryEntry } from "@/types/diary";
-
-const COLLECTION = "entries";
 
 export const runtime = "nodejs";
 
@@ -20,11 +18,24 @@ export async function GET() {
   try {
     const collection = await getEntriesCollection();
     const entries = await collection
-      .find({}, { projection: { _id: 0 } })
-      .sort({ date: -1 })
+      .aggregate<DiaryEntry>([
+        { $sort: { date: -1 } },
+        {
+          $set: {
+            images: {
+              $map: {
+                input: { $ifNull: ["$images", []] },
+                as: "image",
+                in: { id: "$$image.id", name: "$$image.name", alt: "$$image.alt", dataUrl: "" }
+              }
+            }
+          }
+        },
+        { $project: { _id: 0 } }
+      ])
       .toArray();
 
-    return NextResponse.json({ entries: normalizeEntries(entries) });
+    return NextResponse.json({ entries: normalizeEntries(entries).map(withImageUrls) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown MongoDB error.";
     return NextResponse.json(
@@ -34,63 +45,86 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
-  if (!process.env.OWNER_PATTERN) {
-    return NextResponse.json(
-      { entries: [], message: "Owner pattern is not configured." },
-      { status: 503 }
-    );
-  }
-
-  if (!verifyOwnerPattern(request.headers.get("x-owner-pattern") ?? "")) {
-    return NextResponse.json(
-      { entries: [], message: "Owner unlock is required." },
-      { status: 401 }
-    );
-  }
-
-  if (!hasMongoConfig()) {
-    return NextResponse.json(
-      { entries: [], message: "MongoDB is not configured." },
-      { status: 503 }
-    );
+export async function POST(request: Request) {
+  const denied = checkOwner(request);
+  if (denied) {
+    return denied;
   }
 
   try {
-    const body = (await request.json()) as { entries?: unknown };
-    const entries = sortEntries(normalizeEntries(body.entries));
-    const collection = await getEntriesCollection();
-    const ids = entries.map((entry) => entry.id);
+    const body = (await request.json()) as { entry?: unknown };
+    const entry = normalizeEntry(body.entry);
 
-    await collection.createIndex({ date: 1 }, { unique: true });
-
-    if (ids.length === 0) {
-      await collection.deleteMany({});
-      return NextResponse.json({ entries: [] });
+    if (!entry) {
+      return NextResponse.json({ message: "That memory could not be read." }, { status: 400 });
     }
 
-    await collection.deleteMany({ id: { $nin: ids } });
-    await collection.bulkWrite(
-      entries.map((entry) => ({
-        replaceOne: {
-          filter: { id: entry.id },
-          replacement: entry,
-          upsert: true
-        }
-      }))
-    );
+    const collection = await getEntriesCollection();
+    await collection.createIndex({ date: 1 }, { unique: true });
 
-    return NextResponse.json({ entries });
+    // Photos already on the server arrive as links; keep their stored data.
+    const stored = await collection.findOne({ id: entry.id }, { projection: { images: 1 } });
+    const storedImages = new Map(
+      (stored?.images ?? []).map((image) => [image.id, image.dataUrl])
+    );
+    const images = entry.images.flatMap((image) => {
+      if (!isStoredImageUrl(image.dataUrl)) {
+        return [image];
+      }
+
+      const dataUrl = storedImages.get(image.id);
+      return dataUrl ? [{ ...image, dataUrl }] : [];
+    });
+
+    const saved = { ...entry, images };
+    await collection.replaceOne({ id: entry.id }, saved, { upsert: true });
+
+    return NextResponse.json({ entry: withImageUrls(saved) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown MongoDB error.";
     return NextResponse.json(
-      { entries: [], message: `Could not save memories to MongoDB: ${message}` },
+      { message: `Could not save the memory to MongoDB: ${message}` },
       { status: 500 }
     );
   }
 }
 
-async function getEntriesCollection() {
-  const client = await getMongoClient();
-  return client.db(getDatabaseName()).collection<DiaryEntry>(COLLECTION);
+export async function DELETE(request: Request) {
+  const denied = checkOwner(request);
+  if (denied) {
+    return denied;
+  }
+
+  const id = new URL(request.url).searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ message: "Missing memory id." }, { status: 400 });
+  }
+
+  try {
+    const collection = await getEntriesCollection();
+    await collection.deleteOne({ id });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown MongoDB error.";
+    return NextResponse.json(
+      { message: `Could not delete the memory from MongoDB: ${message}` },
+      { status: 500 }
+    );
+  }
+}
+
+function checkOwner(request: Request) {
+  if (!process.env.OWNER_PATTERN) {
+    return NextResponse.json({ message: "Owner pattern is not configured." }, { status: 503 });
+  }
+
+  if (!verifyOwnerPattern(request.headers.get("x-owner-pattern") ?? "")) {
+    return NextResponse.json({ message: "Owner unlock is required." }, { status: 401 });
+  }
+
+  if (!hasMongoConfig()) {
+    return NextResponse.json({ message: "MongoDB is not configured." }, { status: 503 });
+  }
+
+  return null;
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { ShareMemory } from "@/components/journal/ShareMemory";
+import { withImageUrls } from "@/lib/entries-db";
 import { getSharedEntry, shareExcerpt } from "@/lib/shared-entry";
 import { formatLongDate } from "@/lib/utils";
 
@@ -61,7 +62,8 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
     notFound();
   }
 
-  const [coverImage, ...extraImages] = entry.images;
+  // Link to each photo instead of inlining every one into the page.
+  const [coverImage, ...extraImages] = withImageUrls(entry).images;
 
   return (
     <main className="shared-memory">
@@ -119,7 +121,11 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
         ) : null}
 
         <footer className="reader-footer">
-          <ShareMemory entry={entry} buttonClassName="primary-button small" align="end" />
+          <ShareMemory
+            entry={{ date: entry.date, title: entry.title }}
+            buttonClassName="primary-button small"
+            align="end"
+          />
         </footer>
       </article>
     </main>
