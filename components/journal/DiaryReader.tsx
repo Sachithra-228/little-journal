@@ -132,17 +132,15 @@ export function DiaryReader({
           </div>
           <div className="reader-actions">
             <ShareMemory entry={entry} align="end" />
+            <button type="button" onClick={() => onEdit(entry)}>
+              <Pencil size={16} />
+              Edit
+            </button>
             {canManage ? (
-              <>
-                <button type="button" onClick={() => onEdit(entry)}>
-                  <Pencil size={16} />
-                  Edit
-                </button>
-                <button type="button" onClick={() => setConfirmingDelete(true)}>
-                  <Trash2 size={16} />
-                  Delete
-                </button>
-              </>
+              <button type="button" onClick={() => setConfirmingDelete(true)}>
+                <Trash2 size={16} />
+                Delete
+              </button>
             ) : null}
           </div>
         </footer>

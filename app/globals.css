@@ -199,7 +199,6 @@ img {
 .reader-stepper,
 .photo-panel-head,
 .photo-actions,
-.empty-journal > div,
 .reader-footer {
   display: flex;
   align-items: center;
@@ -269,14 +268,6 @@ img {
   padding: 28px 20px 56px;
 }
 
-.opening-layout {
-  display: grid;
-  grid-template-columns: minmax(300px, 0.72fr) minmax(520px, 1fr);
-  gap: clamp(22px, 4vw, 56px);
-  align-items: center;
-  width: min(1280px, 100%);
-}
-
 .hero-inner {
   width: 100%;
   text-align: left;
@@ -292,9 +283,7 @@ img {
 }
 
 .hero-inner h1,
-.section-heading h2,
 .diary-page h2,
-.empty-journal h2,
 .reader-header h1,
 .reader-header h2 {
   margin: 0;
@@ -380,25 +369,6 @@ img {
   font-size: clamp(1.2rem, 2vw, 1.48rem);
 }
 
-.locked-owner-panel {
-  display: grid;
-  align-content: center;
-  justify-items: start;
-  gap: 16px;
-  min-height: 380px;
-}
-
-.locked-owner-panel p:not(.eyebrow) {
-  max-width: 520px;
-  margin: 0;
-  color: rgb(var(--muted));
-  font-size: 1.05rem;
-}
-
-.locked-owner-panel .primary-button {
-  margin-top: 8px;
-}
-
 .section-shell,
 .memory-explorer {
   position: relative;
@@ -429,8 +399,7 @@ img {
   font-size: clamp(2.4rem, 7vw, 4.4rem);
 }
 
-.editor-date-row span,
-.section-heading span {
+.editor-date-row span {
   color: rgb(var(--muted));
 }
 
@@ -993,27 +962,26 @@ input::placeholder {
   text-transform: uppercase;
 }
 
-.section-heading {
-  max-width: 700px;
-  margin-bottom: 42px;
-}
-
-.section-heading h2 {
-  font-size: clamp(2.2rem, 7vw, 4.5rem);
-}
-
 .calendar-stage {
   position: relative;
+  width: min(1180px, 100%);
+  margin: 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   gap: clamp(24px, 4vw, 44px);
 }
 
+.calendar-lead {
+  flex: 1 1 0;
+  align-self: center;
+  min-width: 0;
+}
+
 .memory-calendar {
   position: sticky;
   top: 24px;
-  flex: 0 0 380px;
+  flex: 0 0 400px;
   border: 1px solid rgb(var(--line));
   border-radius: 8px;
   padding: 22px;
@@ -1183,8 +1151,7 @@ input::placeholder {
   color: rgb(var(--muted));
 }
 
-.entry-meta,
-.timeline-empty span {
+.entry-meta {
   color: rgb(var(--muted));
 }
 
@@ -1202,26 +1169,6 @@ input::placeholder {
   gap: 5px;
 }
 
-.timeline-empty,
-.empty-journal {
-  display: grid;
-  justify-items: center;
-  gap: 14px;
-  border-block: 1px solid rgb(var(--line));
-  padding: 70px 20px;
-  text-align: center;
-}
-
-.empty-journal h2 {
-  font-size: clamp(2.4rem, 8vw, 5rem);
-}
-
-.empty-journal p {
-  max-width: 460px;
-  margin: 0;
-  color: rgb(var(--muted));
-}
-
 .reader-backdrop {
   position: fixed;
   inset: 0;
@@ -1232,6 +1179,21 @@ input::placeholder {
   overflow-y: auto;
   background: rgb(20 17 14 / 0.58);
   backdrop-filter: blur(14px);
+}
+
+.editor-backdrop {
+  place-items: start center;
+}
+
+.editor-dialog {
+  position: relative;
+  width: min(860px, 100%);
+  padding-top: 54px;
+}
+
+.editor-dialog .reader-close {
+  top: 0;
+  right: 0;
 }
 
 .reader-page {
@@ -1604,11 +1566,6 @@ input::placeholder {
     padding: 20px 12px 36px;
   }
 
-  .opening-layout {
-    grid-template-columns: 1fr;
-    gap: 22px;
-  }
-
   .hero-inner {
     display: grid;
     justify-items: center;
@@ -1633,6 +1590,10 @@ input::placeholder {
   .calendar-stage {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .calendar-lead {
+    flex: none;
   }
 
   .memory-calendar {
@@ -1693,12 +1654,6 @@ input::placeholder {
 
   .reader-page {
     max-height: calc(100vh - 24px);
-  }
-
-  .empty-journal > div {
-    display: grid;
-    width: 100%;
-    max-width: 360px;
   }
 }
 

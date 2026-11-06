@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Lock, Moon, PenLine, Search, Sun, Unlock } from "lucide-react";
+import { Lock, Moon, PenLine, Search, Sun, Unlock, X } from "lucide-react";
 import { DiaryEditor } from "@/components/journal/DiaryEditor";
 import { DiaryReader } from "@/components/journal/DiaryReader";
 import { DiaryTimeline } from "@/components/journal/DiaryTimeline";
-import { EmptyJournal } from "@/components/journal/EmptyJournal";
 import { MemoryExplorer } from "@/components/journal/MemoryExplorer";
 import { OwnerUnlock } from "@/components/journal/OwnerUnlock";
 import {
@@ -24,47 +23,6 @@ import { deleteRemoteEntry, fetchRemoteEntries, saveRemoteEntry } from "@/lib/re
 import { formatLongDate, toDateInputValue } from "@/lib/utils";
 import type { DiaryDraft, DiaryEntry, MemoryFilters } from "@/types/diary";
 
-const sampleEntries: DiaryEntry[] = [
-  {
-    id: "sample-1",
-    date: "2026-09-30",
-    title: "A New Beginning",
-    content:
-      "The morning felt unusually gentle. I made tea, opened the window, and let the day arrive slowly. There was a small kind of courage in doing ordinary things with attention.",
-    mood: "Grateful",
-    location: "Colombo",
-    tags: ["Personal", "Growth"],
-    images: [],
-    createdAt: "2026-09-30T08:00:00.000Z",
-    updatedAt: "2026-09-30T08:00:00.000Z"
-  },
-  {
-    id: "sample-2",
-    date: "2026-09-29",
-    title: "Getting Ready",
-    content:
-      "I spent the evening arranging tomorrow in small ways: folded clothes, charged devices, a quiet list on paper. Preparation can feel like care when it is done softly.",
-    mood: "Calm",
-    location: "Home",
-    tags: ["Quiet", "Work"],
-    images: [],
-    createdAt: "2026-09-29T18:20:00.000Z",
-    updatedAt: "2026-09-29T18:20:00.000Z"
-  },
-  {
-    id: "sample-3",
-    date: "2026-09-27",
-    title: "An Unexpected Evening",
-    content:
-      "A short walk became a long conversation. The sky turned dusty blue above the streetlights, and for a while everything felt unhurried and possible.",
-    mood: "Happy",
-    location: "By the lake",
-    tags: ["Friends", "Travel"],
-    images: [],
-    createdAt: "2026-09-27T19:40:00.000Z",
-    updatedAt: "2026-09-27T19:40:00.000Z"
-  }
-];
 
 export function JournalApp() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -76,6 +34,7 @@ export function JournalApp() {
   const [showExplorer, setShowExplorer] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const [showEditor, setShowEditor] = useState(false);
   const [notice, setNotice] = useState("");
   const [ownerPattern, setOwnerPattern] = useState("");
   const [filters, setFilters] = useState<MemoryFilters>({
@@ -85,8 +44,8 @@ export function JournalApp() {
     year: ""
   });
 
-  const editorRef = useRef<HTMLDivElement>(null);
-  const storyRef = useRef<HTMLDivElement>(null);
+  // What to open once the owner pattern is entered (writing or editing a page).
+  const pendingEditorRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const localEntries = sortEntries(getEntries());
@@ -159,13 +118,22 @@ export function JournalApp() {
   const stats = useMemo(() => getMemoryStats(entries), [entries]);
   const isOwner = Boolean(ownerPattern);
 
-  function scrollToEditor() {
-    if (!isOwner) {
-      setShowUnlock(true);
+  // Anyone can browse; writing or editing asks for the owner pattern first.
+  function openEditor(entry: DiaryEntry | null, date = toDateInputValue()) {
+    const open = () => {
+      setActiveEntryId(null);
+      setEditingEntry(entry);
+      setSelectedDate(entry?.date ?? date);
+      setShowEditor(true);
+    };
+
+    if (isOwner) {
+      open();
       return;
     }
 
-    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    pendingEditorRef.current = open;
+    setShowUnlock(true);
   }
 
   function handleUnlock(pattern: string) {
@@ -173,12 +141,15 @@ export function JournalApp() {
     setOwnerPattern(pattern);
     setShowUnlock(false);
     setNotice("Owner tools unlocked.");
+    pendingEditorRef.current?.();
+    pendingEditorRef.current = null;
   }
 
   function handleLock() {
     window.sessionStorage.removeItem("little-journal-owner-pattern");
     setOwnerPattern("");
     setEditingEntry(null);
+    setShowEditor(false);
     setNotice("Owner tools locked.");
   }
 
@@ -240,6 +211,7 @@ export function JournalApp() {
       saveEntries(nextEntries);
       setEditingEntry(null);
       setActiveEntryId(null);
+      setShowEditor(false);
       setNotice("Updated your diary. Syncing...");
       syncEntry(updated, "Updated and saved to your diary.");
       return;
@@ -249,12 +221,10 @@ export function JournalApp() {
     const nextEntries = sortEntries([entry, ...entries]);
     setEntries(nextEntries);
     saveEntries(nextEntries);
+    setShowEditor(false);
     setActiveEntryId(entry.id);
     setNotice("Saved it to your diary. Syncing...");
     syncEntry(entry, "Saved it to your diary.");
-    window.setTimeout(() => {
-      storyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 120);
   }
 
   function handleDelete(id: string) {
@@ -270,11 +240,6 @@ export function JournalApp() {
     setEditingEntry(null);
     setNotice("Memory deleted. Syncing...");
     syncDelete(id, "Memory deleted from your diary.");
-  }
-
-  function loadSamples() {
-    setEntries(sortEntries(sampleEntries));
-    setNotice("Sample memories added.");
   }
 
   const todayLabel = formatLongDate(toDateInputValue());
@@ -332,36 +297,83 @@ export function JournalApp() {
         </div>
       </nav>
 
-      <section id="top" className="hero-section">
-        <div className="opening-layout">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
-            className="hero-inner"
-          >
-            <p className="eyebrow">Private daily pages</p>
-            <h1>Little Journal</h1>
-            <p className="hero-line">Small moments. Big memories.</p>
-            <div className="today-block" aria-label={`Today is ${todayLabel}`}>
-              <span>{new Intl.DateTimeFormat("en", { weekday: "long" }).format(new Date())}</span>
-              <strong>
-                {new Intl.DateTimeFormat("en", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric"
-                }).format(new Date())}
-              </strong>
-            </div>
-            <p className="hero-question">What happened today?</p>
-            <button className="primary-button" type="button" onClick={scrollToEditor}>
-              {isOwner ? <PenLine size={18} /> : <Lock size={18} />}
-              {isOwner ? "Start writing" : "Owner unlock"}
-            </button>
-          </motion.div>
+      <AnimatePresence>
+        {showExplorer ? (
+          <MemoryExplorer
+            entries={entries}
+            filters={filters}
+            onChange={setFilters}
+            onClose={() => setShowExplorer(false)}
+          />
+        ) : null}
+      </AnimatePresence>
 
-          {isOwner ? (
-            <div ref={editorRef} className="quick-editor-frame">
+      <section id="top" className="hero-section">
+        <DiaryTimeline
+          entries={visibleEntries}
+          totalEntries={entries.length}
+          onOpen={(entry) => setActiveEntryId(entry.id)}
+          onEdit={(entry) => openEditor(entry)}
+          onWrite={(date) => openEditor(null, date)}
+          lead={
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
+              className="hero-inner"
+            >
+              <p className="eyebrow">Private daily pages</p>
+              <h1>Little Journal</h1>
+              <p className="hero-line">Small moments. Big memories.</p>
+              <div className="today-block" aria-label={`Today is ${todayLabel}`}>
+                <span>{new Intl.DateTimeFormat("en", { weekday: "long" }).format(new Date())}</span>
+                <strong>
+                  {new Intl.DateTimeFormat("en", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric"
+                  }).format(new Date())}
+                </strong>
+              </div>
+              <p className="hero-question">What happened today?</p>
+              <button className="primary-button" type="button" onClick={() => openEditor(null)}>
+                <PenLine size={18} />
+                Start writing
+              </button>
+            </motion.div>
+          }
+        />
+      </section>
+
+      <AnimatePresence>
+        {showEditor ? (
+          <motion.div
+            className="reader-backdrop editor-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="editor-heading"
+          >
+            <motion.div
+              className="editor-dialog quick-editor-frame"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.3 }}
+            >
+              <button
+                className="reader-close"
+                type="button"
+                aria-label="Close editor"
+                onClick={() => {
+                  setShowEditor(false);
+                  setEditingEntry(null);
+                }}
+              >
+                <X size={20} />
+              </button>
               <DiaryEditor
                 key={editingEntry?.id ?? selectedDate}
                 selectedDate={selectedDate}
@@ -372,29 +384,19 @@ export function JournalApp() {
                   setEditingEntry(null);
                 }}
                 onSave={handleSave}
-                onViewEntry={(entry) => setActiveEntryId(entry.id)}
+                onViewEntry={(entry) => {
+                  setShowEditor(false);
+                  setActiveEntryId(entry.id);
+                }}
                 onEditEntry={(entry) => {
                   setEditingEntry(entry);
                   setSelectedDate(entry.date);
                 }}
               />
-            </div>
-          ) : (
-            <div ref={editorRef} className="quick-editor-frame">
-              <section className="diary-page locked-owner-panel">
-                <Lock size={22} />
-                <p className="eyebrow">Read only</p>
-                <h2>Memories are protected.</h2>
-                <p>Unlock owner tools to write, edit, or delete diary pages.</p>
-                <button className="primary-button" type="button" onClick={() => setShowUnlock(true)}>
-                  <Lock size={18} />
-                  Owner unlock
-                </button>
-              </section>
-            </div>
-          )}
-        </div>
-      </section>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {notice ? (
@@ -412,43 +414,15 @@ export function JournalApp() {
 
       <AnimatePresence>
         {showUnlock ? (
-          <OwnerUnlock onClose={() => setShowUnlock(false)} onUnlock={handleUnlock} />
-        ) : null}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showExplorer ? (
-          <MemoryExplorer
-            entries={entries}
-            filters={filters}
-            onChange={setFilters}
-            onClose={() => setShowExplorer(false)}
+          <OwnerUnlock
+            onClose={() => {
+              setShowUnlock(false);
+              pendingEditorRef.current = null;
+            }}
+            onUnlock={handleUnlock}
           />
         ) : null}
       </AnimatePresence>
-
-      <div ref={storyRef} className="section-shell story-shell">
-        {entries.length === 0 ? (
-          <EmptyJournal onWrite={scrollToEditor} onLoadSamples={loadSamples} canWrite={isOwner} />
-        ) : (
-          <DiaryTimeline
-            entries={visibleEntries}
-            totalEntries={entries.length}
-            onOpen={(entry) => setActiveEntryId(entry.id)}
-            onEdit={(entry) => {
-              setEditingEntry(entry);
-              setSelectedDate(entry.date);
-              window.setTimeout(scrollToEditor, 80);
-            }}
-            onWrite={(date) => {
-              setEditingEntry(null);
-              setSelectedDate(date);
-              window.setTimeout(scrollToEditor, 80);
-            }}
-            canManage={isOwner}
-          />
-        )}
-      </div>
 
       <AnimatePresence>
         {activeEntry ? (
@@ -456,12 +430,7 @@ export function JournalApp() {
             entry={activeEntry}
             entries={entries}
             onClose={() => setActiveEntryId(null)}
-            onEdit={(entry) => {
-              setActiveEntryId(null);
-              setEditingEntry(entry);
-              setSelectedDate(entry.date);
-              window.setTimeout(scrollToEditor, 80);
-            }}
+            onEdit={(entry) => openEditor(entry)}
             onDelete={handleDelete}
             onNavigate={(entry) => setActiveEntryId(entry.id)}
             canManage={isOwner}

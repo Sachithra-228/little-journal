@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { ReactNode, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, ChevronLeft, ChevronRight, MapPin, PenLine, Pencil, X } from "lucide-react";
 import Image from "next/image";
@@ -14,7 +14,7 @@ interface DiaryTimelineProps {
   onOpen: (entry: DiaryEntry) => void;
   onEdit: (entry: DiaryEntry) => void;
   onWrite: (date: string) => void;
-  canManage: boolean;
+  lead: ReactNode;
 }
 
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -25,7 +25,7 @@ export function DiaryTimeline({
   onOpen,
   onEdit,
   onWrite,
-  canManage
+  lead
 }: DiaryTimelineProps) {
   const today = toDateInputValue();
   const [viewMonth, setViewMonth] = useState(() => monthKey(entries[0]?.date ?? today));
@@ -38,17 +38,8 @@ export function DiaryTimeline({
   );
   const { leadingBlanks, days } = useMemo(() => buildMonth(viewMonth), [viewMonth]);
   const selectedEntry = selectedDate ? entriesByDate.get(selectedDate) ?? null : null;
-  const emptySelectedDate = canManage && selectedDate && !selectedEntry ? selectedDate : null;
+  const emptySelectedDate = selectedDate && !selectedEntry ? selectedDate : null;
   const monthCount = days.filter((day) => entriesByDate.has(day)).length;
-
-  if (entries.length === 0) {
-    return (
-      <section className="timeline-empty">
-        <p>No memory matches this search.</p>
-        <span>Try a softer word, a different mood, or another month.</span>
-      </section>
-    );
-  }
 
   function selectDate(date: string) {
     if (date === selectedDate) {
@@ -66,218 +57,224 @@ export function DiaryTimeline({
   }
 
   return (
-    <section className="timeline" aria-labelledby="story-heading">
-      <div className="section-heading">
-        <p className="eyebrow">Saved diary story</p>
-        <h2 id="story-heading">Your days, becoming chapters.</h2>
-        <span>
-          Showing {entries.length} of {totalEntries} memories
-        </span>
-      </div>
+    <section className="calendar-stage" aria-label="Diary calendar">
+      {/* The landing text steps aside when a day opens, so the calendar slides left. */}
+      <AnimatePresence initial={false} mode="popLayout">
+        {selectedDate ? null : (
+          <motion.div
+            key="lead"
+            className="calendar-lead"
+            initial={{ opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -32 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+          >
+            {lead}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="calendar-stage">
-        <motion.div
-          layout="position"
-          className="memory-calendar"
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="calendar-head">
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Previous month"
-              onClick={() => setViewMonth(shiftMonth(viewMonth, -1))}
-            >
-              <ChevronLeft size={17} />
-            </button>
-            <h3 aria-live="polite">{formatMonth(viewMonth)}</h3>
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Next month"
-              onClick={() => setViewMonth(shiftMonth(viewMonth, 1))}
-            >
-              <ChevronRight size={17} />
-            </button>
-          </div>
+      <motion.div
+        layout="position"
+        className="memory-calendar"
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="calendar-head">
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Previous month"
+            onClick={() => setViewMonth(shiftMonth(viewMonth, -1))}
+          >
+            <ChevronLeft size={17} />
+          </button>
+          <h3 aria-live="polite">{formatMonth(viewMonth)}</h3>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Next month"
+            onClick={() => setViewMonth(shiftMonth(viewMonth, 1))}
+          >
+            <ChevronRight size={17} />
+          </button>
+        </div>
 
-          <div className="calendar-weekdays" aria-hidden="true">
-            {weekdays.map((weekday) => (
-              <span key={weekday}>{weekday}</span>
-            ))}
-          </div>
+        <div className="calendar-weekdays" aria-hidden="true">
+          {weekdays.map((weekday) => (
+            <span key={weekday}>{weekday}</span>
+          ))}
+        </div>
 
-          <div className="calendar-grid">
-            {Array.from({ length: leadingBlanks }, (_, index) => (
-              <span key={`blank-${index}`} />
-            ))}
-            {days.map((day) => {
-              const entry = entriesByDate.get(day);
-              const canWrite = canManage && !entry && day <= today;
+        <div className="calendar-grid">
+          {Array.from({ length: leadingBlanks }, (_, index) => (
+            <span key={`blank-${index}`} />
+          ))}
+          {days.map((day) => {
+            const entry = entriesByDate.get(day);
+            const canWrite = !entry && day <= today;
 
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  className={cn(
-                    "calendar-day",
-                    entry && "has-memory",
-                    canWrite && "can-write",
-                    day === today && "today",
-                    day === selectedDate && "selected"
-                  )}
-                  disabled={!entry && !canWrite}
-                  aria-pressed={entry || canWrite ? day === selectedDate : undefined}
-                  aria-label={
-                    entry ? `${formatLongDate(day)}: ${entry.title}` : formatLongDate(day)
-                  }
-                  title={entry?.title}
-                  onClick={() => selectDate(day)}
-                >
-                  {Number(day.slice(8))}
-                </button>
-              );
-            })}
-          </div>
+            return (
+              <button
+                key={day}
+                type="button"
+                className={cn(
+                  "calendar-day",
+                  entry && "has-memory",
+                  canWrite && "can-write",
+                  day === today && "today",
+                  day === selectedDate && "selected"
+                )}
+                disabled={!entry && !canWrite}
+                aria-pressed={entry || canWrite ? day === selectedDate : undefined}
+                aria-label={
+                  entry ? `${formatLongDate(day)}: ${entry.title}` : formatLongDate(day)
+                }
+                title={entry?.title}
+                onClick={() => selectDate(day)}
+              >
+                {Number(day.slice(8))}
+              </button>
+            );
+          })}
+        </div>
 
-          <div className="calendar-foot">
-            <span>
-              {monthCount === 0
+        <div className="calendar-foot">
+          <span>
+            {entries.length < totalEntries
+              ? `Search: ${entries.length} of ${totalEntries} memories match`
+              : monthCount === 0
                 ? "No memories this month"
                 : `${monthCount} ${monthCount === 1 ? "memory" : "memories"} this month`}
-            </span>
-            {monthCount === 0 ? (
-              <button type="button" onClick={() => setViewMonth(monthKey(entries[0].date))}>
-                Latest memory
-              </button>
+          </span>
+          {monthCount === 0 && entries.length ? (
+            <button type="button" onClick={() => setViewMonth(monthKey(entries[0].date))}>
+              Latest memory
+            </button>
+          ) : null}
+        </div>
+      </motion.div>
+
+      <AnimatePresence mode="popLayout">
+        {selectedEntry ? (
+          <motion.article
+            key={selectedEntry.id}
+            ref={storyRef}
+            className="calendar-story"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 24 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <button
+              className="reader-close"
+              type="button"
+              aria-label="Close memory"
+              onClick={() => setSelectedDate(null)}
+            >
+              <X size={20} />
+            </button>
+
+            <time dateTime={selectedEntry.date}>{formatLongDate(selectedEntry.date)}</time>
+            <h3>{selectedEntry.title}</h3>
+            <div className="entry-meta">
+              <span>{selectedEntry.mood}</span>
+              {selectedEntry.location ? (
+                <span>
+                  <MapPin size={14} />
+                  {selectedEntry.location}
+                </span>
+              ) : null}
+              {selectedEntry.tags.slice(0, 3).map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+
+            {selectedEntry.images[0] ? (
+              <div className="reader-cover">
+                <Image
+                  src={selectedEntry.images[0].dataUrl}
+                  alt={selectedEntry.images[0].alt}
+                  fill
+                  sizes="(min-width: 820px) 560px, 100vw"
+                  unoptimized
+                />
+              </div>
             ) : null}
-          </div>
-        </motion.div>
 
-        <AnimatePresence mode="popLayout">
-          {selectedEntry ? (
-            <motion.article
-              key={selectedEntry.id}
-              ref={storyRef}
-              className="calendar-story"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            >
-              <button
-                className="reader-close"
-                type="button"
-                aria-label="Close memory"
-                onClick={() => setSelectedDate(null)}
-              >
-                <X size={20} />
-              </button>
-
-              <time dateTime={selectedEntry.date}>{formatLongDate(selectedEntry.date)}</time>
-              <h3>{selectedEntry.title}</h3>
-              <div className="entry-meta">
-                <span>{selectedEntry.mood}</span>
-                {selectedEntry.location ? (
-                  <span>
-                    <MapPin size={14} />
-                    {selectedEntry.location}
-                  </span>
-                ) : null}
-                {selectedEntry.tags.slice(0, 3).map((tag) => (
-                  <span key={tag}>{tag}</span>
-                ))}
-              </div>
-
-              {selectedEntry.images[0] ? (
-                <div className="reader-cover">
-                  <Image
-                    src={selectedEntry.images[0].dataUrl}
-                    alt={selectedEntry.images[0].alt}
-                    fill
-                    sizes="(min-width: 820px) 560px, 100vw"
-                    unoptimized
-                  />
-                </div>
-              ) : null}
-
-              {selectedEntry.images.length > 1 ? (
-                <div className="calendar-story-photos">
-                  {selectedEntry.images.slice(1).map((image) => (
-                    <button
-                      key={image.id}
-                      type="button"
-                      aria-label="Open full page to see this photo"
-                      onClick={() => onOpen(selectedEntry)}
-                    >
-                      <Image src={image.dataUrl} alt={image.alt} fill sizes="90px" unoptimized />
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="calendar-story-text">
-                {selectedEntry.content.split(/\n{2,}/).map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
-
-              <div className="calendar-story-actions">
-                <button
-                  className="primary-button small"
-                  type="button"
-                  onClick={() => onOpen(selectedEntry)}
-                >
-                  <BookOpen size={16} />
-                  Open full page
-                </button>
-                <ShareMemory entry={selectedEntry} buttonClassName="quiet-button" />
-                {canManage ? (
+            {selectedEntry.images.length > 1 ? (
+              <div className="calendar-story-photos">
+                {selectedEntry.images.slice(1).map((image) => (
                   <button
-                    className="quiet-button"
+                    key={image.id}
                     type="button"
-                    onClick={() => onEdit(selectedEntry)}
+                    aria-label="Open full page to see this photo"
+                    onClick={() => onOpen(selectedEntry)}
                   >
-                    <Pencil size={16} />
-                    Edit
+                    <Image src={image.dataUrl} alt={image.alt} fill sizes="90px" unoptimized />
                   </button>
-                ) : null}
+                ))}
               </div>
-            </motion.article>
-          ) : emptySelectedDate ? (
-            <motion.article
-              key={`empty-${emptySelectedDate}`}
-              ref={storyRef}
-              className="calendar-story calendar-story-empty"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            >
-              <button
-                className="reader-close"
-                type="button"
-                aria-label="Close"
-                onClick={() => setSelectedDate(null)}
-              >
-                <X size={20} />
-              </button>
+            ) : null}
 
-              <time dateTime={emptySelectedDate}>{formatLongDate(emptySelectedDate)}</time>
-              <h3>No memory for this day yet.</h3>
-              <p>Write it now and it will appear here on the calendar.</p>
+            <div className="calendar-story-text">
+              {selectedEntry.content.split(/\n{2,}/).map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+            </div>
+
+            <div className="calendar-story-actions">
               <button
                 className="primary-button small"
                 type="button"
-                onClick={() => onWrite(emptySelectedDate)}
+                onClick={() => onOpen(selectedEntry)}
               >
-                <PenLine size={16} />
-                Write this day
+                <BookOpen size={16} />
+                Open full page
               </button>
-            </motion.article>
-          ) : null}
-        </AnimatePresence>
-      </div>
+              <ShareMemory entry={selectedEntry} buttonClassName="quiet-button" />
+              <button
+                className="quiet-button"
+                type="button"
+                onClick={() => onEdit(selectedEntry)}
+              >
+                <Pencil size={16} />
+                Edit
+              </button>
+            </div>
+          </motion.article>
+        ) : emptySelectedDate ? (
+          <motion.article
+            key={`empty-${emptySelectedDate}`}
+            ref={storyRef}
+            className="calendar-story calendar-story-empty"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 24 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <button
+              className="reader-close"
+              type="button"
+              aria-label="Close"
+              onClick={() => setSelectedDate(null)}
+            >
+              <X size={20} />
+            </button>
+
+            <time dateTime={emptySelectedDate}>{formatLongDate(emptySelectedDate)}</time>
+            <h3>No memory for this day yet.</h3>
+            <p>Write it now and it will appear here on the calendar.</p>
+            <button
+              className="primary-button small"
+              type="button"
+              onClick={() => onWrite(emptySelectedDate)}
+            >
+              <PenLine size={16} />
+              Write this day
+            </button>
+          </motion.article>
+        ) : null}
+      </AnimatePresence>
     </section>
   );
 }
