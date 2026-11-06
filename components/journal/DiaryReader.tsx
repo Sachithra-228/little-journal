@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { ShareMemory } from "@/components/journal/ShareMemory";
-import { sortEntries } from "@/lib/diary";
+import { HOME_LOCATION, getMapQuery, sortEntries } from "@/lib/diary";
 import { formatLongDate, formatWeekday } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
 
@@ -72,7 +72,12 @@ export function DiaryReader({
               <h2 id="reader-title">{entry.title}</h2>
               <div className="reader-meta">
                 <span>{entry.mood}</span>
-                {entry.location ? (
+                {entry.location === HOME_LOCATION ? (
+                  <span>
+                    <MapPin size={15} />
+                    {entry.location}
+                  </span>
+                ) : entry.location ? (
                   <a href={getMapHref(entry)} target="_blank" rel="noreferrer">
                     <MapPin size={15} />
                     {entry.location}
@@ -164,8 +169,6 @@ export function DiaryReader({
 }
 
 function getMapHref(entry: DiaryEntry) {
-  const query = entry.locationPoint
-    ? `${entry.locationPoint.lat},${entry.locationPoint.lng}`
-    : entry.location;
+  const query = getMapQuery(entry.location, entry.locationPoint);
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

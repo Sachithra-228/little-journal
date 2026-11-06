@@ -555,6 +555,7 @@ input::placeholder {
 
 .details-content {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   border-top: 1px solid rgb(var(--line));
   padding: 18px;
@@ -567,7 +568,29 @@ input::placeholder {
   font-weight: 700;
 }
 
-.mood-selector > div,
+.mood-selector {
+  min-inline-size: 0;
+}
+
+.mood-selector > div {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.mood-selector > div::-webkit-scrollbar {
+  display: none;
+}
+
+.mood-selector .mood-pill {
+  flex: none;
+  scroll-snap-align: start;
+  white-space: nowrap;
+}
+
 .tag-options,
 .selected-tags,
 .reader-tags {
@@ -610,8 +633,84 @@ input::placeholder {
   gap: 14px;
 }
 
+.workplace-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 999px;
+  padding: 4px;
+  background: rgb(var(--surface));
+}
+
+.workplace-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: rgb(var(--muted));
+  background: transparent;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+
+.workplace-option:hover:not(.active) {
+  color: rgb(var(--ink));
+}
+
+.workplace-option svg,
+.workplace-label {
+  position: relative;
+  z-index: 1;
+}
+
+.workplace-option.active {
+  color: rgb(var(--surface));
+}
+
+.workplace-label-short {
+  display: none;
+}
+
+.workplace-highlight {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgb(var(--accent));
+  box-shadow: 0 8px 20px rgb(var(--shadow) / 0.18);
+}
+
+.auto-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: rgb(var(--accent));
+}
+
+.auto-tags-row .tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 0.86rem;
+}
+
+.auto-tags-row .tag-chip.auto {
+  border-style: dashed;
+  border-color: rgb(var(--accent) / 0.45);
+  color: rgb(var(--ink));
+}
+
 .location-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1645,6 +1744,19 @@ input::placeholder {
 
   .crop-area {
     height: 42vh;
+  }
+
+  .workplace-option {
+    padding: 0 8px;
+  }
+
+  .workplace-option svg,
+  .workplace-label-long {
+    display: none;
+  }
+
+  .workplace-label-short {
+    display: inline;
   }
 
   .crop-actions {

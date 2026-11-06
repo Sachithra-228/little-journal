@@ -8,13 +8,17 @@ import {
   LocateFixed,
   MapPin,
   Save,
-  Tag
+  Sparkles,
+  Tag,
+  X
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { MoodSelector } from "@/components/journal/MoodSelector";
 import { PhotoUploader } from "@/components/journal/PhotoUploader";
 import { DatePicker } from "@/components/journal/DatePicker";
-import { starterTags } from "@/lib/diary";
+import { WorkplaceSwitch, type Workplace } from "@/components/journal/WorkplaceSwitch";
+import { suggestTags } from "@/lib/auto-tags";
+import { HOME_LOCATION, ONSITE_LOCATION, getMapQuery, starterTags } from "@/lib/diary";
 import { formatLongDate, formatWeekday, toDateInputValue } from "@/lib/utils";
 import type {
   DiaryDraft,
@@ -47,17 +51,35 @@ export function DiaryEditor({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [content, setContent] = useState(initial?.content ?? "");
   const [mood, setMood] = useState<DiaryMood>(initial?.mood ?? "Calm");
-  const [location, setLocation] = useState(initial?.location ?? "");
+  const [location, setLocation] = useState(initial?.location ?? ONSITE_LOCATION);
   const [locationPoint, setLocationPoint] = useState<DiaryLocationPoint | undefined>(
     initial?.locationPoint
   );
-  const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
+  const [manualTags, setManualTags] = useState<string[]>(initial?.tags ?? []);
+  // When revisiting a page, only words typed from now on add new auto tags.
+  const [dismissedTags, setDismissedTags] = useState<string[]>(() =>
+    initial
+      ? suggestTags(`${initial.title}\n${initial.content}`).filter(
+          (tag) => !initial.tags.includes(tag)
+        )
+      : []
+  );
   const [tagInput, setTagInput] = useState("");
   const [images, setImages] = useState<DiaryImage[]>(initial?.images ?? []);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [locationStatus, setLocationStatus] = useState("");
 
   const canSave = content.trim().length > 0 || title.trim().length > 0;
+  const autoTags = useMemo(() => suggestTags(`${title}\n${content}`), [title, content]);
+  const tags = useMemo(
+    () =>
+      Array.from(
+        new Set([...manualTags, ...autoTags.filter((tag) => !dismissedTags.includes(tag))])
+      ).slice(0, 12),
+    [autoTags, dismissedTags, manualTags]
+  );
+  const workplace: Workplace | null =
+    location === ONSITE_LOCATION ? "onsite" : location === HOME_LOCATION ? "home" : null;
   const dateLabel = useMemo(() => formatLongDate(selectedDate), [selectedDate]);
 
   function addTag(tag: string) {
@@ -65,10 +87,24 @@ export function DiaryEditor({
     if (!normalized) {
       return;
     }
-    setTags((current) =>
+    setManualTags((current) =>
       current.includes(normalized) ? current : [...current, normalized].slice(0, 12)
     );
+    setDismissedTags((current) => current.filter((item) => item !== normalized));
     setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    setManualTags((current) => current.filter((item) => item !== tag));
+    if (autoTags.includes(tag)) {
+      setDismissedTags((current) => [...current, tag]);
+    }
+  }
+
+  function chooseWorkplace(next: Workplace) {
+    setLocation(next === "onsite" ? ONSITE_LOCATION : HOME_LOCATION);
+    setLocationPoint(undefined);
+    setLocationStatus("");
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -92,9 +128,10 @@ export function DiaryEditor({
       setTitle("");
       setContent("");
       setMood("Calm");
-      setLocation("");
+      setLocation(ONSITE_LOCATION);
       setLocationPoint(undefined);
-      setTags([]);
+      setManualTags([]);
+      setDismissedTags([]);
       setImages([]);
       setDetailsOpen(false);
     }
@@ -196,6 +233,25 @@ export function DiaryEditor({
             rows={10}
           />
 
+          {tags.length ? (
+            <div className="auto-tags-row" aria-label="Tags for this page">
+              <Sparkles size={15} aria-hidden="true" />
+              {tags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className={manualTags.includes(tag) ? "tag-chip active" : "tag-chip auto"}
+                  aria-label={`Remove tag ${tag}`}
+                  title={manualTags.includes(tag) ? "Your tag" : "Suggested from what you wrote"}
+                  onClick={() => removeTag(tag)}
+                >
+                  {tag}
+                  <X size={12} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <section className="details-drawer">
             <button
               className="details-toggle"
@@ -218,13 +274,14 @@ export function DiaryEditor({
                   <div className="location-head">
                     <span id="location-heading">
                       <MapPin size={16} />
-                      Location
+                      Where were you today?
                     </span>
                     <button className="quiet-button" type="button" onClick={useCurrentLocation}>
                       <LocateFixed size={16} />
                       Use current location
                     </button>
                   </div>
+                  <WorkplaceSwitch value={workplace} onChange={chooseWorkplace} />
                   <label className="soft-field compact">
                     <span className="sr-only">Location name or place</span>
                     <input
@@ -233,11 +290,11 @@ export function DiaryEditor({
                         setLocation(event.target.value);
                         setLocationPoint(undefined);
                       }}
-                      placeholder="Add a place or choose current location"
+                      placeholder="Somewhere else? Type a place"
                     />
                   </label>
                   {locationStatus ? <p className="form-note">{locationStatus}</p> : null}
-                  {location ? (
+                  {location && workplace !== "home" ? (
                     <div className="mini-map">
                       <iframe
                         title="Selected memory location map"
@@ -264,12 +321,11 @@ export function DiaryEditor({
                     {starterTags.map((tag) => (
                       <button
                         className={tags.includes(tag) ? "tag-chip active" : "tag-chip"}
+                        aria-pressed={tags.includes(tag)}
                         key={tag}
                         type="button"
                         onClick={() =>
-                          tags.includes(tag)
-                            ? setTags((current) => current.filter((item) => item !== tag))
-                            : addTag(tag)
+                          tags.includes(tag) ? removeTag(tag) : addTag(tag)
                         }
                       >
                         {tag}
@@ -292,19 +348,6 @@ export function DiaryEditor({
                       Add
                     </button>
                   </div>
-                  {tags.length ? (
-                    <div className="selected-tags" aria-label="Selected tags">
-                      {tags.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => setTags((current) => current.filter((item) => item !== tag))}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
 
                 <PhotoUploader images={images} onChange={setImages} />
@@ -323,11 +366,11 @@ export function DiaryEditor({
 }
 
 function getMapHref(location: string, point?: DiaryLocationPoint) {
-  const query = point ? `${point.lat},${point.lng}` : location;
+  const query = getMapQuery(location, point);
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 function getMapEmbed(location: string, point?: DiaryLocationPoint) {
-  const query = point ? `${point.lat},${point.lng}` : location;
+  const query = getMapQuery(location, point);
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=14&output=embed`;
 }

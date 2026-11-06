@@ -12,6 +12,20 @@ export const moodOptions: Array<{ mood: DiaryMood }> = [
   { mood: "Motivated" }
 ];
 
+export const ONSITE_LOCATION = "Sandbox Office, Ethul Kotte";
+export const HOME_LOCATION = "Work from home";
+
+// "Sandbox Office" alone is too vague for Google Maps, so map the full address.
+const ONSITE_MAP_QUERY = "Sandbox Consultancy Services, 11B, 9th Lane, Ethul Kotte, Sri Lanka";
+
+export function getMapQuery(location: string, point?: { lat: number; lng: number }) {
+  if (point) {
+    return `${point.lat},${point.lng}`;
+  }
+
+  return location === ONSITE_LOCATION ? ONSITE_MAP_QUERY : location;
+}
+
 export const starterTags = [
   "Personal",
   "Work",
