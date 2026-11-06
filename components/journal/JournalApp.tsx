@@ -14,7 +14,6 @@ import {
   deleteEntry,
   filterEntries,
   getEntryByDate,
-  getMemoryStats,
   sortEntries,
   updateEntry
 } from "@/lib/diary";
@@ -156,7 +155,6 @@ export function JournalApp() {
     () => filterEntries(entries, filters),
     [entries, filters]
   );
-  const stats = useMemo(() => getMemoryStats(entries), [entries]);
   const isOwner = Boolean(ownerPattern);
 
   function scrollToEditor() {
@@ -401,21 +399,6 @@ export function JournalApp() {
           <OwnerUnlock onClose={() => setShowUnlock(false)} onUnlock={handleUnlock} />
         ) : null}
       </AnimatePresence>
-
-      <section className="reflection-strip" aria-label="Journal reflections">
-        <div>
-          <strong>{stats.memories}</strong>
-          <span>memories collected</span>
-        </div>
-        <div>
-          <strong>{stats.months}</strong>
-          <span>months documented</span>
-        </div>
-        <div>
-          <strong>{stats.places}</strong>
-          <span>places remembered</span>
-        </div>
-      </section>
 
       <AnimatePresence>
         {showExplorer ? (
