@@ -102,6 +102,19 @@ export function filterEntries(
   });
 }
 
+export function getMemoryStats(entries: DiaryEntry[]) {
+  const months = new Set(entries.map((entry) => monthKey(entry.date)));
+  const places = new Set(
+    entries.map((entry) => entry.location.trim()).filter(Boolean)
+  );
+
+  return {
+    memories: entries.length,
+    months: months.size,
+    places: places.size
+  };
+}
+
 function sanitizeDraft(draft: DiaryDraft): DiaryDraft {
   return {
     date: draft.date,

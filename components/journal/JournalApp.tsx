@@ -14,6 +14,7 @@ import {
   deleteEntry,
   filterEntries,
   getEntryByDate,
+  getMemoryStats,
   sortEntries,
   updateEntry
 } from "@/lib/diary";
@@ -155,6 +156,7 @@ export function JournalApp() {
     () => filterEntries(entries, filters),
     [entries, filters]
   );
+  const stats = useMemo(() => getMemoryStats(entries), [entries]);
   const isOwner = Boolean(ownerPattern);
 
   function scrollToEditor() {
@@ -285,6 +287,20 @@ export function JournalApp() {
         <a href="#top" className="brand-mark">
           Little Journal
         </a>
+        <dl className="nav-stats" aria-label="Journal reflections">
+          <div>
+            <dt>memories</dt>
+            <dd>{stats.memories}</dd>
+          </div>
+          <div>
+            <dt>months</dt>
+            <dd>{stats.months}</dd>
+          </div>
+          <div>
+            <dt>places</dt>
+            <dd>{stats.places}</dd>
+          </div>
+        </dl>
         <div className="nav-actions">
           <button
             className="icon-button"
