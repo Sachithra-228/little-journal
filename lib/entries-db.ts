@@ -29,7 +29,8 @@ export function ensureEntrySchema() {
       { $set: { journal: DEFAULT_JOURNAL } }
     );
 
-    const indexes = await collection.indexes();
+    // A brand-new database has no entries collection yet, so no indexes to check.
+    const indexes = await collection.indexes().catch(() => []);
     if (indexes.some((index) => index.name === "date_1")) {
       await collection.dropIndex("date_1");
     }

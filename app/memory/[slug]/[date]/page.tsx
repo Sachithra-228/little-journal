@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { ShareMemory } from "@/components/journal/ShareMemory";
 import { withImageUrls } from "@/lib/entries-db";
+import { isWorkJournal } from "@/lib/journals";
 import { getSharedEntry, shareExcerpt } from "@/lib/shared-entry";
 import { formatLongDate } from "@/lib/utils";
 
@@ -62,6 +63,8 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
     notFound();
   }
 
+  // Personal pages show no mood, place or tags.
+  const isWork = isWorkJournal(entry.journal);
   // Link to each photo instead of inlining every one into the page.
   const [coverImage, ...extraImages] = withImageUrls(entry).images;
 
@@ -78,15 +81,17 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
           <header className="reader-header">
             <time dateTime={entry.date}>{formatLongDate(entry.date)}</time>
             <h1>{entry.title}</h1>
-            <div className="reader-meta">
-              <span>{entry.mood}</span>
-              {entry.location ? (
-                <span>
-                  <MapPin size={15} />
-                  {entry.location}
-                </span>
-              ) : null}
-            </div>
+            {isWork ? (
+              <div className="reader-meta">
+                <span>{entry.mood}</span>
+                {entry.location ? (
+                  <span>
+                    <MapPin size={15} />
+                    {entry.location}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </header>
 
           {coverImage ? (
@@ -112,7 +117,7 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
           ))}
         </div>
 
-        {entry.tags.length ? (
+        {isWork && entry.tags.length ? (
           <div className="reader-tags">
             {entry.tags.map((tag) => (
               <span key={tag}>{tag}</span>

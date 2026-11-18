@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { isWorkJournal } from "@/lib/journals";
 import { getSharedEntry, shareExcerpt } from "@/lib/shared-entry";
 import { formatLongDate, parseLocalDate } from "@/lib/utils";
 
@@ -31,7 +32,10 @@ export async function GET(
   const day = parseLocalDate(entry.date);
   const dayNumber = String(day.getDate());
   const monthLabel = new Intl.DateTimeFormat("en", { month: "long" }).format(day).toUpperCase();
-  const details = [entry.mood, entry.location].filter(Boolean).join("  ·  ");
+  // Personal pages carry no mood or place.
+  const details = isWorkJournal(entry.journal)
+    ? [entry.mood, entry.location].filter(Boolean).join("  ·  ")
+    : "";
   const cover = entry.images[0]?.dataUrl;
 
   const fontText = `${title}${excerpt}${dateLabel}${details}${dayNumber}${monthLabel}Little Journal`;

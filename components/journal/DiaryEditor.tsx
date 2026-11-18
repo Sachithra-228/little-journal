@@ -130,9 +130,9 @@ export function DiaryEditor({
       title: title.trim() || (onLeave ? `On leave${leaveReason ? ` · ${leaveReason}` : ""}` : title),
       content,
       mood,
-      location,
-      locationPoint,
-      tags,
+      location: isWork ? location : "",
+      locationPoint: isWork ? locationPoint : undefined,
+      tags: isWork ? tags : [],
       images
     });
 
@@ -270,7 +270,7 @@ export function DiaryEditor({
             rows={10}
           />
 
-          {tags.length ? (
+          {isWork && tags.length ? (
             <div className="auto-tags-row" aria-label="Tags for this page">
               <Sparkles size={15} aria-hidden="true" />
               {tags.map((tag) => (
@@ -296,7 +296,7 @@ export function DiaryEditor({
               aria-expanded={detailsOpen}
               onClick={() => setDetailsOpen((value) => !value)}
             >
-              <span>Add location, mood, tags, photos</span>
+              <span>{isWork ? "Add location, mood, tags, photos" : "Add photos"}</span>
               <ChevronDown size={18} aria-hidden="true" />
             </button>
 
@@ -307,84 +307,88 @@ export function DiaryEditor({
                 animate={{ opacity: 1, height: "auto" }}
                 transition={{ duration: 0.24 }}
               >
-                <section className="location-panel" aria-labelledby="location-heading">
-                  <div className="location-head">
-                    <span id="location-heading">
-                      <MapPin size={16} />
-                      {isWork ? "Place" : "Where were you today?"}
-                    </span>
-                    <button className="quiet-button" type="button" onClick={useCurrentLocation}>
-                      <LocateFixed size={16} />
-                      Use current location
-                    </button>
-                  </div>
-                  <label className="soft-field compact">
-                    <span className="sr-only">Location name or place</span>
-                    <input
-                      value={location}
-                      onChange={(event) => {
-                        setLocation(event.target.value);
-                        setLocationPoint(undefined);
-                      }}
-                      placeholder={isWork ? "Somewhere else? Type a place" : "Add a place"}
-                    />
-                  </label>
-                  {locationStatus ? <p className="form-note">{locationStatus}</p> : null}
-                  {location && location !== HOME_LOCATION ? (
-                    <div className="mini-map">
-                      <iframe
-                        title="Selected memory location map"
-                        src={getMapEmbed(location, locationPoint)}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                      />
-                      <a href={mapHref} target="_blank" rel="noreferrer">
-                        <ExternalLink size={15} />
-                        Open map
-                      </a>
+                {isWork ? (
+                  <>
+                    <section className="location-panel" aria-labelledby="location-heading">
+                      <div className="location-head">
+                        <span id="location-heading">
+                          <MapPin size={16} />
+                          {isWork ? "Place" : "Where were you today?"}
+                        </span>
+                        <button className="quiet-button" type="button" onClick={useCurrentLocation}>
+                          <LocateFixed size={16} />
+                          Use current location
+                        </button>
+                      </div>
+                      <label className="soft-field compact">
+                        <span className="sr-only">Location name or place</span>
+                        <input
+                          value={location}
+                          onChange={(event) => {
+                            setLocation(event.target.value);
+                            setLocationPoint(undefined);
+                          }}
+                          placeholder={isWork ? "Somewhere else? Type a place" : "Add a place"}
+                        />
+                      </label>
+                      {locationStatus ? <p className="form-note">{locationStatus}</p> : null}
+                      {location && location !== HOME_LOCATION ? (
+                        <div className="mini-map">
+                          <iframe
+                            title="Selected memory location map"
+                            src={getMapEmbed(location, locationPoint)}
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          />
+                          <a href={mapHref} target="_blank" rel="noreferrer">
+                            <ExternalLink size={15} />
+                            Open map
+                          </a>
+                        </div>
+                      ) : null}
+                    </section>
+
+                    <MoodSelector value={mood} onChange={setMood} />
+
+                    <div className="tag-panel">
+                      <span className="tag-title">
+                        <Tag size={16} />
+                        Tags
+                      </span>
+                      <div className="tag-options">
+                        {starterTags.map((tag) => (
+                          <button
+                            className={tags.includes(tag) ? "tag-chip active" : "tag-chip"}
+                            aria-pressed={tags.includes(tag)}
+                            key={tag}
+                            type="button"
+                            onClick={() =>
+                              tags.includes(tag) ? removeTag(tag) : addTag(tag)
+                            }
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="tag-input-row">
+                        <input
+                          value={tagInput}
+                          onChange={(event) => setTagInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              addTag(tagInput);
+                            }
+                          }}
+                          placeholder="Add your own tag"
+                        />
+                        <button type="button" className="quiet-button" onClick={() => addTag(tagInput)}>
+                          Add
+                        </button>
+                      </div>
                     </div>
-                  ) : null}
-                </section>
-
-                <MoodSelector value={mood} onChange={setMood} />
-
-                <div className="tag-panel">
-                  <span className="tag-title">
-                    <Tag size={16} />
-                    Tags
-                  </span>
-                  <div className="tag-options">
-                    {starterTags.map((tag) => (
-                      <button
-                        className={tags.includes(tag) ? "tag-chip active" : "tag-chip"}
-                        aria-pressed={tags.includes(tag)}
-                        key={tag}
-                        type="button"
-                        onClick={() =>
-                          tags.includes(tag) ? removeTag(tag) : addTag(tag)
-                        }
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="tag-input-row">
-                    <input
-                      value={tagInput}
-                      onChange={(event) => setTagInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          addTag(tagInput);
-                        }
-                      }}
-                      placeholder="Add your own tag"
-                    />
-                    <button type="button" className="quiet-button" onClick={() => addTag(tagInput)}>
-                      Add
-                    </button>
-                  </div>
-                </div>
+                  </>
+                ) : null}
 
                 <PhotoUploader images={images} onChange={setImages} />
               </motion.div>

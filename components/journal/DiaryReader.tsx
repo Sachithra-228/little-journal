@@ -14,6 +14,7 @@ import {
 import Image from "next/image";
 import { ShareMemory } from "@/components/journal/ShareMemory";
 import { HOME_LOCATION, getMapQuery, sortEntries } from "@/lib/diary";
+import { isWorkJournal } from "@/lib/journals";
 import { formatLongDate, formatWeekday } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
 
@@ -44,6 +45,7 @@ export function DiaryReader({
   const previous = orderedEntries[currentIndex + 1] ?? null;
   const next = orderedEntries[currentIndex - 1] ?? null;
   const [coverImage, ...extraImages] = entry.images;
+  const isWork = isWorkJournal(entry.journal);
 
   return (
     <motion.div
@@ -72,21 +74,24 @@ export function DiaryReader({
               <time dateTime={entry.date}>{formatLongDate(entry.date)}</time>
               <span>{formatWeekday(entry.date)}</span>
               <h2 id="reader-title">{entry.title}</h2>
-              <div className="reader-meta">
-                <span>{entry.mood}</span>
-                {entry.location === HOME_LOCATION ? (
-                  <span>
-                    <MapPin size={15} />
-                    {entry.location}
-                  </span>
-                ) : entry.location ? (
-                  <a href={getMapHref(entry)} target="_blank" rel="noreferrer">
-                    <MapPin size={15} />
-                    {entry.location}
-                    <ExternalLink size={14} />
-                  </a>
-                ) : null}
-              </div>
+              {/* Personal pages show no mood, place or tags. */}
+              {isWork ? (
+                <div className="reader-meta">
+                  <span>{entry.mood}</span>
+                  {entry.location === HOME_LOCATION ? (
+                    <span>
+                      <MapPin size={15} />
+                      {entry.location}
+                    </span>
+                  ) : entry.location ? (
+                    <a href={getMapHref(entry)} target="_blank" rel="noreferrer">
+                      <MapPin size={15} />
+                      {entry.location}
+                      <ExternalLink size={14} />
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
             </header>
           </div>
 
@@ -113,7 +118,7 @@ export function DiaryReader({
           ))}
         </div>
 
-        {entry.tags.length ? (
+        {isWork && entry.tags.length ? (
           <div className="reader-tags">
             {entry.tags.map((tag) => (
               <span key={tag}>{tag}</span>

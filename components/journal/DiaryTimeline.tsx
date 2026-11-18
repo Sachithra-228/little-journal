@@ -273,24 +273,26 @@ export function DiaryTimeline({
 
             <time dateTime={selectedEntry.date}>{formatLongDate(selectedEntry.date)}</time>
             <h3>{selectedEntry.title}</h3>
-            <div className="entry-meta">
-              {selectedEntry.dayType ? (
-                <span className={`day-badge day-${selectedEntry.dayType}`}>
-                  {dayTypeLabels[selectedEntry.dayType]}
-                  {selectedEntry.leaveReason ? ` · ${selectedEntry.leaveReason}` : ""}
-                </span>
-              ) : null}
-              {selectedEntry.dayType === "leave" ? null : <span>{selectedEntry.mood}</span>}
-              {selectedEntry.location ? (
-                <span>
-                  <MapPin size={14} />
-                  {selectedEntry.location}
-                </span>
-              ) : null}
-              {selectedEntry.tags.slice(0, 3).map((tag) => (
-                <span key={tag}>{tag}</span>
-              ))}
-            </div>
+            {isWork ? (
+              <div className="entry-meta">
+                {selectedEntry.dayType ? (
+                  <span className={`day-badge day-${selectedEntry.dayType}`}>
+                    {dayTypeLabels[selectedEntry.dayType]}
+                    {selectedEntry.leaveReason ? ` · ${selectedEntry.leaveReason}` : ""}
+                  </span>
+                ) : null}
+                {isWork && selectedEntry.dayType !== "leave" ? <span>{selectedEntry.mood}</span> : null}
+                {isWork && selectedEntry.location ? (
+                  <span>
+                    <MapPin size={14} />
+                    {selectedEntry.location}
+                  </span>
+                ) : null}
+                {isWork
+                  ? selectedEntry.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)
+                  : null}
+              </div>
+            ) : null}
 
             {selectedEntry.images[0] ? (
               <div className="reader-cover">
