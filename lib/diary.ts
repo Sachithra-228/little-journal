@@ -19,13 +19,14 @@ export const HOME_LOCATION = "Work from home";
 // "Sandbox Office" alone is too vague for Google Maps, so map the full address.
 const ONSITE_MAP_QUERY = "Sandbox Consultancy Services, 11B, 9th Lane, Ethul Kotte, Sri Lanka";
 
-// Pages written before day types existed get one from their place.
+// Pages written before day types existed get one from their place. Older pages
+// spell the office several ways ("Sandbox Consultancy Services, 11B, ...").
 export function deriveDayType(location: string): DayType | undefined {
-  if (location === ONSITE_LOCATION) {
+  if (location === ONSITE_LOCATION || /\bsandbox\b/i.test(location)) {
     return "onsite";
   }
 
-  return location === HOME_LOCATION ? "remote" : undefined;
+  return location === HOME_LOCATION || /\bhome\b/i.test(location) ? "remote" : undefined;
 }
 
 export function getMapQuery(location: string, point?: { lat: number; lng: number }) {
