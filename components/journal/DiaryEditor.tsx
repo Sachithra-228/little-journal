@@ -16,9 +16,10 @@ import { motion } from "framer-motion";
 import { MoodSelector } from "@/components/journal/MoodSelector";
 import { PhotoUploader } from "@/components/journal/PhotoUploader";
 import { DatePicker } from "@/components/journal/DatePicker";
-import { WorkplaceSwitch, type Workplace } from "@/components/journal/WorkplaceSwitch";
+import { DayTypeSwitch } from "@/components/journal/DayTypeSwitch";
 import { suggestTags } from "@/lib/auto-tags";
 import { HOME_LOCATION, ONSITE_LOCATION, getMapQuery, starterTags } from "@/lib/diary";
+import { getJournal, isWorkJournal, leaveReasons, type DayType } from "@/lib/journals";
 import { formatLongDate, formatWeekday, toDateInputValue } from "@/lib/utils";
 import type {
   DiaryDraft,
@@ -29,6 +30,7 @@ import type {
 } from "@/types/diary";
 
 interface DiaryEditorProps {
+  journal: string;
   selectedDate: string;
   existingEntry: DiaryEntry | null;
   editingEntry: DiaryEntry | null;
@@ -39,6 +41,7 @@ interface DiaryEditorProps {
 }
 
 export function DiaryEditor({
+  journal,
   selectedDate,
   existingEntry,
   editingEntry,
@@ -48,10 +51,15 @@ export function DiaryEditor({
   onEditEntry
 }: DiaryEditorProps) {
   const initial = editingEntry;
+  const isWork = isWorkJournal(journal);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [content, setContent] = useState(initial?.content ?? "");
   const [mood, setMood] = useState<DiaryMood>(initial?.mood ?? "Calm");
-  const [location, setLocation] = useState(initial?.location ?? ONSITE_LOCATION);
+  const [location, setLocation] = useState(initial?.location ?? (isWork ? ONSITE_LOCATION : ""));
+  const [dayType, setDayType] = useState<DayType | null>(
+    initial?.dayType ?? (isWork ? "onsite" : null)
+  );
+  const [leaveReason, setLeaveReason] = useState(initial?.leaveReason ?? "");
   const [locationPoint, setLocationPoint] = useState<DiaryLocationPoint | undefined>(
     initial?.locationPoint
   );
@@ -69,7 +77,9 @@ export function DiaryEditor({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [locationStatus, setLocationStatus] = useState("");
 
-  const canSave = content.trim().length > 0 || title.trim().length > 0;
+  const onLeave = isWork && dayType === "leave";
+  // A leave day needs no story; the reason is enough.
+  const canSave = content.trim().length > 0 || title.trim().length > 0 || onLeave;
   const autoTags = useMemo(() => suggestTags(`${title}\n${content}`), [title, content]);
   const tags = useMemo(
     () =>
@@ -78,8 +88,6 @@ export function DiaryEditor({
       ).slice(0, 12),
     [autoTags, dismissedTags, manualTags]
   );
-  const workplace: Workplace | null =
-    location === ONSITE_LOCATION ? "onsite" : location === HOME_LOCATION ? "home" : null;
   const dateLabel = useMemo(() => formatLongDate(selectedDate), [selectedDate]);
 
   function addTag(tag: string) {
@@ -101,8 +109,9 @@ export function DiaryEditor({
     }
   }
 
-  function chooseWorkplace(next: Workplace) {
-    setLocation(next === "onsite" ? ONSITE_LOCATION : HOME_LOCATION);
+  function chooseDayType(next: DayType) {
+    setDayType(next);
+    setLocation(next === "onsite" ? ONSITE_LOCATION : next === "remote" ? HOME_LOCATION : "");
     setLocationPoint(undefined);
     setLocationStatus("");
   }
@@ -114,8 +123,11 @@ export function DiaryEditor({
     }
 
     onSave({
+      journal,
+      dayType: isWork ? dayType ?? undefined : undefined,
+      leaveReason: onLeave ? leaveReason || undefined : undefined,
       date: selectedDate,
-      title,
+      title: title.trim() || (onLeave ? `On leave${leaveReason ? ` · ${leaveReason}` : ""}` : title),
       content,
       mood,
       location,
@@ -128,7 +140,9 @@ export function DiaryEditor({
       setTitle("");
       setContent("");
       setMood("Calm");
-      setLocation(ONSITE_LOCATION);
+      setLocation(isWork ? ONSITE_LOCATION : "");
+      setDayType(isWork ? "onsite" : null);
+      setLeaveReason("");
       setLocationPoint(undefined);
       setManualTags([]);
       setDismissedTags([]);
@@ -180,6 +194,7 @@ export function DiaryEditor({
       <div className="editor-date-row">
         <div>
           <p className="eyebrow">
+            {getJournal(journal).name} ·{" "}
             {editingEntry
               ? "Revisiting"
               : selectedDate === toDateInputValue()
@@ -210,6 +225,28 @@ export function DiaryEditor({
         </div>
       ) : (
         <form className="editor-form" onSubmit={handleSubmit}>
+          {isWork ? (
+            <div className="day-type-field">
+              <span className="field-label">Where did you work today?</span>
+              <DayTypeSwitch value={dayType} onChange={chooseDayType} />
+              {onLeave ? (
+                <div className="tag-options" role="group" aria-label="Leave reason">
+                  {leaveReasons.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      className={leaveReason === reason ? "tag-chip active" : "tag-chip"}
+                      aria-pressed={leaveReason === reason}
+                      onClick={() => setLeaveReason(leaveReason === reason ? "" : reason)}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <label className="field-label" htmlFor="entry-title">
             How was your day?
           </label>
@@ -218,7 +255,7 @@ export function DiaryEditor({
             className="title-input"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="A short title"
+            placeholder={onLeave ? "On leave (optional title)" : "A short title"}
           />
 
           <label className="sr-only" htmlFor="entry-content">
@@ -274,14 +311,13 @@ export function DiaryEditor({
                   <div className="location-head">
                     <span id="location-heading">
                       <MapPin size={16} />
-                      Where were you today?
+                      {isWork ? "Place" : "Where were you today?"}
                     </span>
                     <button className="quiet-button" type="button" onClick={useCurrentLocation}>
                       <LocateFixed size={16} />
                       Use current location
                     </button>
                   </div>
-                  <WorkplaceSwitch value={workplace} onChange={chooseWorkplace} />
                   <label className="soft-field compact">
                     <span className="sr-only">Location name or place</span>
                     <input
@@ -290,11 +326,11 @@ export function DiaryEditor({
                         setLocation(event.target.value);
                         setLocationPoint(undefined);
                       }}
-                      placeholder="Somewhere else? Type a place"
+                      placeholder={isWork ? "Somewhere else? Type a place" : "Add a place"}
                     />
                   </label>
                   {locationStatus ? <p className="form-note">{locationStatus}</p> : null}
-                  {location && workplace !== "home" ? (
+                  {location && location !== HOME_LOCATION ? (
                     <div className="mini-map">
                       <iframe
                         title="Selected memory location map"

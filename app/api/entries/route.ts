@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { getEntriesCollection, isStoredImageUrl, withImageUrls } from "@/lib/entries-db";
+import {
+  ensureEntrySchema,
+  getEntriesCollection,
+  isPersonalPublic,
+  isStoredImageUrl,
+  withImageUrls
+} from "@/lib/entries-db";
+import { PRIVATE_JOURNAL } from "@/lib/journals";
 import { hasMongoConfig } from "@/lib/mongodb";
 import { verifyOwnerPattern } from "@/lib/owner-auth";
 import { normalizeEntries, normalizeEntry } from "@/lib/storage";
@@ -7,7 +14,7 @@ import type { DiaryEntry } from "@/types/diary";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!hasMongoConfig()) {
     return NextResponse.json(
       { entries: [], message: "MongoDB is not configured." },
@@ -16,9 +23,16 @@ export async function GET() {
   }
 
   try {
+    await ensureEntrySchema();
+    // Visitors never receive the personal diary unless the owner made it public.
+    const personalPublic = await isPersonalPublic();
+    const isOwner = verifyOwnerPattern(request.headers.get("x-owner-pattern") ?? "");
+    const match = isOwner || personalPublic ? {} : { journal: { $ne: PRIVATE_JOURNAL } };
+
     const collection = await getEntriesCollection();
     const entries = await collection
       .aggregate<DiaryEntry>([
+        { $match: match },
         { $sort: { date: -1 } },
         {
           $set: {
@@ -35,7 +49,10 @@ export async function GET() {
       ])
       .toArray();
 
-    return NextResponse.json({ entries: normalizeEntries(entries).map(withImageUrls) });
+    return NextResponse.json({
+      entries: normalizeEntries(entries).map(withImageUrls),
+      personalPublic
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown MongoDB error.";
     return NextResponse.json(
@@ -59,8 +76,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "That memory could not be read." }, { status: 400 });
     }
 
+    await ensureEntrySchema();
     const collection = await getEntriesCollection();
-    await collection.createIndex({ date: 1 }, { unique: true });
 
     // Photos already on the server arrive as links; keep their stored data.
     const stored = await collection.findOne({ id: entry.id }, { projection: { images: 1 } });

@@ -2,13 +2,32 @@
 
 import { ReactNode, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, ChevronLeft, ChevronRight, MapPin, PenLine, Pencil, X } from "lucide-react";
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+  Lock,
+  MapPin,
+  Palmtree,
+  PenLine,
+  Pencil,
+  X
+} from "lucide-react";
 import Image from "next/image";
 import { ShareMemory } from "@/components/journal/ShareMemory";
+import { isWorkJournal, leaveReasons, type DayType, type Journal } from "@/lib/journals";
 import { cn, formatLongDate, monthKey, parseLocalDate, toDateInputValue } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
 
 interface DiaryTimelineProps {
+  journal: string;
+  tabs: Journal[];
+  onJournalChange: (journal: string) => void;
+  canShare: boolean;
+  // Only for the owner, on the personal diary.
+  visibility: { personalPublic: boolean; onToggle: () => void } | null;
+  onMarkLeave: (date: string, reason: string) => void;
   entries: DiaryEntry[];
   totalEntries: number;
   onOpen: (entry: DiaryEntry) => void;
@@ -19,7 +38,19 @@ interface DiaryTimelineProps {
 
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const dayTypeLabels: Record<DayType, string> = {
+  onsite: "Onsite",
+  remote: "Work from home",
+  leave: "Leave"
+};
+
 export function DiaryTimeline({
+  journal,
+  tabs,
+  onJournalChange,
+  canShare,
+  visibility,
+  onMarkLeave,
   entries,
   totalEntries,
   onOpen,
@@ -30,6 +61,8 @@ export function DiaryTimeline({
   const today = toDateInputValue();
   const [viewMonth, setViewMonth] = useState(() => monthKey(entries[0]?.date ?? today));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [choosingLeave, setChoosingLeave] = useState(false);
+  const isWork = isWorkJournal(journal);
   const storyRef = useRef<HTMLElement>(null);
 
   const entriesByDate = useMemo(
@@ -39,9 +72,16 @@ export function DiaryTimeline({
   const { leadingBlanks, days } = useMemo(() => buildMonth(viewMonth), [viewMonth]);
   const selectedEntry = selectedDate ? entriesByDate.get(selectedDate) ?? null : null;
   const emptySelectedDate = selectedDate && !selectedEntry ? selectedDate : null;
-  const monthCount = days.filter((day) => entriesByDate.has(day)).length;
+  const monthEntries = days.flatMap((day) => entriesByDate.get(day) ?? []);
+  const monthCount = monthEntries.length;
+  const dayTypeCounts = (Object.keys(dayTypeLabels) as DayType[]).map((type) => ({
+    type,
+    count: monthEntries.filter((entry) => entry.dayType === type).length
+  }));
 
   function selectDate(date: string) {
+    setChoosingLeave(false);
+
     if (date === selectedDate) {
       setSelectedDate(null);
       return;
@@ -79,6 +119,34 @@ export function DiaryTimeline({
         className="memory-calendar"
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
+        {tabs.length > 1 ? (
+          <div className="journal-tabs" role="tablist" aria-label="Diaries">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={tab.id === journal}
+                className={cn("journal-tab", tab.id === journal && "active")}
+                onClick={() => {
+                  setSelectedDate(null);
+                  setChoosingLeave(false);
+                  onJournalChange(tab.id);
+                }}
+              >
+                {tab.id === journal ? (
+                  <motion.span
+                    layoutId="journal-tab-highlight"
+                    className="journal-tab-highlight"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
+                ) : null}
+                <span className="journal-tab-label">{tab.name}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <div className="calendar-head">
           <button
             className="icon-button"
@@ -120,6 +188,7 @@ export function DiaryTimeline({
                 className={cn(
                   "calendar-day",
                   entry && "has-memory",
+                  entry?.dayType && `day-${entry.dayType}`,
                   canWrite && "can-write",
                   day === today && "today",
                   day === selectedDate && "selected"
@@ -127,7 +196,9 @@ export function DiaryTimeline({
                 disabled={!entry && !canWrite}
                 aria-pressed={entry || canWrite ? day === selectedDate : undefined}
                 aria-label={
-                  entry ? `${formatLongDate(day)}: ${entry.title}` : formatLongDate(day)
+                  entry
+                    ? `${formatLongDate(day)}: ${entry.dayType ? `${dayTypeLabels[entry.dayType]}, ` : ""}${entry.title}`
+                    : formatLongDate(day)
                 }
                 title={entry?.title}
                 onClick={() => selectDate(day)}
@@ -137,6 +208,18 @@ export function DiaryTimeline({
             );
           })}
         </div>
+
+        {isWork ? (
+          <ul className="calendar-legend" aria-label="Day colours this month">
+            {dayTypeCounts.map(({ type, count }) => (
+              <li key={type} className={`day-${type}`}>
+                <span className="calendar-legend-dot" aria-hidden="true" />
+                {dayTypeLabels[type]}
+                <strong>{count}</strong>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="calendar-foot">
           <span>
@@ -152,6 +235,20 @@ export function DiaryTimeline({
             </button>
           ) : null}
         </div>
+
+        {visibility ? (
+          <button
+            type="button"
+            className={cn("visibility-toggle", visibility.personalPublic && "public")}
+            aria-pressed={visibility.personalPublic}
+            onClick={visibility.onToggle}
+          >
+            {visibility.personalPublic ? <Globe size={15} /> : <Lock size={15} />}
+            {visibility.personalPublic
+              ? "Public: anyone can read this diary"
+              : "Private: only you can see this diary"}
+          </button>
+        ) : null}
       </motion.div>
 
       <AnimatePresence mode="popLayout">
@@ -177,7 +274,13 @@ export function DiaryTimeline({
             <time dateTime={selectedEntry.date}>{formatLongDate(selectedEntry.date)}</time>
             <h3>{selectedEntry.title}</h3>
             <div className="entry-meta">
-              <span>{selectedEntry.mood}</span>
+              {selectedEntry.dayType ? (
+                <span className={`day-badge day-${selectedEntry.dayType}`}>
+                  {dayTypeLabels[selectedEntry.dayType]}
+                  {selectedEntry.leaveReason ? ` · ${selectedEntry.leaveReason}` : ""}
+                </span>
+              ) : null}
+              {selectedEntry.dayType === "leave" ? null : <span>{selectedEntry.mood}</span>}
               {selectedEntry.location ? (
                 <span>
                   <MapPin size={14} />
@@ -231,7 +334,9 @@ export function DiaryTimeline({
                 <BookOpen size={16} />
                 Open full page
               </button>
-              <ShareMemory entry={selectedEntry} buttonClassName="quiet-button" />
+              {canShare ? (
+                <ShareMemory entry={selectedEntry} buttonClassName="quiet-button" />
+              ) : null}
               <button
                 className="quiet-button"
                 type="button"
@@ -263,15 +368,49 @@ export function DiaryTimeline({
 
             <time dateTime={emptySelectedDate}>{formatLongDate(emptySelectedDate)}</time>
             <h3>No memory for this day yet.</h3>
-            <p>Write it now and it will appear here on the calendar.</p>
-            <button
-              className="primary-button small"
-              type="button"
-              onClick={() => onWrite(emptySelectedDate)}
-            >
-              <PenLine size={16} />
-              Write this day
-            </button>
+            <p>
+              {isWork
+                ? "Write about it, or mark it as a leave day."
+                : "Write it now and it will appear here on the calendar."}
+            </p>
+            <div className="calendar-story-actions">
+              <button
+                className="primary-button small"
+                type="button"
+                onClick={() => onWrite(emptySelectedDate)}
+              >
+                <PenLine size={16} />
+                Write this day
+              </button>
+              {isWork ? (
+                <button
+                  className="quiet-button"
+                  type="button"
+                  aria-expanded={choosingLeave}
+                  onClick={() => setChoosingLeave((value) => !value)}
+                >
+                  <Palmtree size={16} />
+                  Mark as leave
+                </button>
+              ) : null}
+            </div>
+            {choosingLeave ? (
+              <div className="leave-reasons">
+                <span>Why were you away?</span>
+                <div className="tag-options">
+                  {leaveReasons.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      className="tag-chip"
+                      onClick={() => onMarkLeave(emptySelectedDate, reason)}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </motion.article>
         ) : null}
       </AnimatePresence>

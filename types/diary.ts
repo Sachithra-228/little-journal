@@ -1,3 +1,5 @@
+import type { DayType } from "@/lib/journals";
+
 export type DiaryMood =
   | "Happy"
   | "Calm"
@@ -23,6 +25,7 @@ export interface DiaryLocationPoint {
 
 export interface DiaryEntry {
   id: string;
+  journal: string;
   date: string;
   title: string;
   content: string;
@@ -31,11 +34,14 @@ export interface DiaryEntry {
   locationPoint?: DiaryLocationPoint;
   tags: string[];
   images: DiaryImage[];
+  dayType?: DayType;
+  leaveReason?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface DiaryDraft {
+  journal: string;
   date: string;
   title: string;
   content: string;
@@ -44,6 +50,8 @@ export interface DiaryDraft {
   locationPoint?: DiaryLocationPoint;
   tags: string[];
   images: DiaryImage[];
+  dayType?: DayType;
+  leaveReason?: string;
 }
 
 export interface MemoryFilters {

@@ -19,12 +19,12 @@ export const viewport: Viewport = {
 };
 
 interface MemoryPageProps {
-  params: Promise<{ date: string }>;
+  params: Promise<{ slug: string; date: string }>;
 }
 
 export async function generateMetadata({ params }: MemoryPageProps): Promise<Metadata> {
-  const { date } = await params;
-  const entry = await getSharedEntry(date);
+  const { slug, date } = await params;
+  const entry = await getSharedEntry(slug, date);
 
   if (!entry) {
     return { title: "Memory not found — Little Journal" };
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: MemoryPageProps): Promise<Met
 
   const baseUrl = await getBaseUrl();
   const description = shareExcerpt(entry.content);
-  const image = `${baseUrl}/memory/${entry.date}/card`;
+  const image = `${baseUrl}/memory/${entry.journal}/${entry.date}/card`;
 
   return {
     title: `${entry.title} — Little Journal`,
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: MemoryPageProps): Promise<Met
       siteName: "Little Journal",
       title: entry.title,
       description,
-      url: `${baseUrl}/memory/${entry.date}`,
+      url: `${baseUrl}/memory/${entry.journal}/${entry.date}`,
       images: [{ url: image, width: 1200, height: 630, alt: entry.title }]
     },
     twitter: {
@@ -55,8 +55,8 @@ export async function generateMetadata({ params }: MemoryPageProps): Promise<Met
 }
 
 export default async function MemoryPage({ params }: MemoryPageProps) {
-  const { date } = await params;
-  const entry = await getSharedEntry(date);
+  const { slug, date } = await params;
+  const entry = await getSharedEntry(slug, date);
 
   if (!entry) {
     notFound();
@@ -122,7 +122,7 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
 
         <footer className="reader-footer">
           <ShareMemory
-            entry={{ date: entry.date, title: entry.title }}
+            entry={{ journal: entry.journal, date: entry.date, title: entry.title }}
             buttonClassName="primary-button small"
             align="end"
           />

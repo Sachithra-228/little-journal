@@ -1,3 +1,5 @@
+import { deriveDayType } from "@/lib/diary";
+import { DEFAULT_JOURNAL, dayTypes, isKnownJournal, isWorkJournal, type DayType } from "@/lib/journals";
 import type { DiaryEntry, DiaryMood } from "@/types/diary";
 
 export const STORAGE_KEY = "little-journal-entries";
@@ -78,15 +80,28 @@ export function normalizeEntry(value: unknown): DiaryEntry | null {
     return null;
   }
 
+  // Pages from before separate diaries all belong to Sandbox.
+  const journal = isKnownJournal(maybe.journal) ? maybe.journal : DEFAULT_JOURNAL;
+  const location = typeof maybe.location === "string" ? maybe.location : "";
+  const dayType = isWorkJournal(journal)
+    ? dayTypes.includes(maybe.dayType as DayType)
+      ? (maybe.dayType as DayType)
+      : deriveDayType(location)
+    : undefined;
+
   return {
     id: maybe.id,
+    journal,
+    dayType,
+    leaveReason:
+      dayType === "leave" && typeof maybe.leaveReason === "string" ? maybe.leaveReason : undefined,
     date: maybe.date,
     title: maybe.title,
     content: maybe.content,
     mood: validMoods.includes(maybe.mood as DiaryMood)
       ? (maybe.mood as DiaryMood)
       : "Normal",
-    location: typeof maybe.location === "string" ? maybe.location : "",
+    location,
     locationPoint: normalizeLocationPoint(maybe.locationPoint),
     tags: Array.isArray(maybe.tags)
       ? maybe.tags.filter((tag): tag is string => typeof tag === "string")

@@ -25,6 +25,7 @@ interface DiaryReaderProps {
   onDelete: (id: string) => void;
   onNavigate: (entry: DiaryEntry) => void;
   canManage: boolean;
+  canShare: boolean;
 }
 
 export function DiaryReader({
@@ -34,7 +35,8 @@ export function DiaryReader({
   onEdit,
   onDelete,
   onNavigate,
-  canManage
+  canManage,
+  canShare
 }: DiaryReaderProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const orderedEntries = useMemo(() => sortEntries(entries), [entries]);
@@ -131,7 +133,7 @@ export function DiaryReader({
             </button>
           </div>
           <div className="reader-actions">
-            <ShareMemory entry={entry} align="end" />
+            {canShare ? <ShareMemory entry={entry} align="end" /> : null}
             <button type="button" onClick={() => onEdit(entry)}>
               <Pencil size={16} />
               Edit

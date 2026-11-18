@@ -19,7 +19,13 @@ import {
 } from "@/lib/diary";
 import { compressDiaryImages } from "@/lib/client-images";
 import { getEntries, saveEntries } from "@/lib/storage";
-import { deleteRemoteEntry, fetchRemoteEntries, saveRemoteEntry } from "@/lib/remote-storage";
+import {
+  deleteRemoteEntry,
+  fetchRemoteEntries,
+  savePersonalVisibility,
+  saveRemoteEntry
+} from "@/lib/remote-storage";
+import { DEFAULT_JOURNAL, PRIVATE_JOURNAL, journals } from "@/lib/journals";
 import { formatLongDate, toDateInputValue } from "@/lib/utils";
 import type { DiaryDraft, DiaryEntry, MemoryFilters } from "@/types/diary";
 
@@ -35,6 +41,8 @@ export function JournalApp() {
   const [showUnlock, setShowUnlock] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
+  const [activeJournal, setActiveJournal] = useState(DEFAULT_JOURNAL);
+  const [personalPublic, setPersonalPublic] = useState(false);
   const [notice, setNotice] = useState("");
   const [ownerPattern, setOwnerPattern] = useState("");
   const [filters, setFilters] = useState<MemoryFilters>({
@@ -44,21 +52,24 @@ export function JournalApp() {
     year: ""
   });
 
-  // What to open once the owner pattern is entered (writing or editing a page).
-  const pendingEditorRef = useRef<(() => void) | null>(null);
+  // What to run once the owner pattern is entered (writing, editing, marking leave).
+  const pendingOwnerActionRef = useRef<((pattern: string) => void) | null>(null);
 
   useEffect(() => {
-    const localEntries = sortEntries(getEntries());
     let cancelled = false;
     const introTimer = window.setTimeout(() => setShowIntro(false), 2350);
+    const savedOwnerPattern = window.sessionStorage.getItem("little-journal-owner-pattern") ?? "";
+    // Until the server says otherwise, keep personal pages off a locked screen.
+    const localEntries = sortEntries(getEntries()).filter(
+      (entry) => savedOwnerPattern || entry.journal !== PRIVATE_JOURNAL
+    );
 
     setEntries(localEntries);
     setLoaded(true);
     setDarkMode(window.matchMedia("(prefers-color-scheme: dark)").matches);
-    const savedOwnerPattern = window.sessionStorage.getItem("little-journal-owner-pattern") ?? "";
     setOwnerPattern(savedOwnerPattern);
 
-    fetchRemoteEntries().then((result) => {
+    fetchRemoteEntries(savedOwnerPattern).then((result) => {
       if (cancelled) {
         return;
       }
@@ -66,6 +77,8 @@ export function JournalApp() {
       if (!result.ok) {
         return;
       }
+
+      setPersonalPublic(result.personalPublic);
 
       if (result.entries.length) {
         const remoteEntries = sortEntries(result.entries);
@@ -103,37 +116,83 @@ export function JournalApp() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  const editorJournal = editingEntry?.journal ?? activeJournal;
   const existingForDate = useMemo(
-    () => getEntryByDate(entries, selectedDate),
-    [entries, selectedDate]
+    () => getEntryByDate(entries, selectedDate, editorJournal),
+    [editorJournal, entries, selectedDate]
+  );
+  const journalEntries = useMemo(
+    () => entries.filter((entry) => entry.journal === activeJournal),
+    [activeJournal, entries]
   );
   const activeEntry = useMemo(
     () => entries.find((entry) => entry.id === activeEntryId) ?? null,
     [activeEntryId, entries]
   );
   const visibleEntries = useMemo(
-    () => filterEntries(entries, filters),
-    [entries, filters]
+    () => filterEntries(journalEntries, filters),
+    [journalEntries, filters]
   );
-  const stats = useMemo(() => getMemoryStats(entries), [entries]);
+  const stats = useMemo(() => getMemoryStats(journalEntries), [journalEntries]);
   const isOwner = Boolean(ownerPattern);
+  const journalTabs = journals.filter(
+    (journal) => journal.id !== PRIVATE_JOURNAL || isOwner || personalPublic
+  );
+  // A private personal page has no public link, so there is nothing to share.
+  const canShare = activeJournal !== PRIVATE_JOURNAL || personalPublic;
+
+  function withOwner(action: (pattern: string) => void) {
+    if (isOwner) {
+      action(ownerPattern);
+      return;
+    }
+
+    pendingOwnerActionRef.current = action;
+    setShowUnlock(true);
+  }
 
   // Anyone can browse; writing or editing asks for the owner pattern first.
   function openEditor(entry: DiaryEntry | null, date = toDateInputValue()) {
-    const open = () => {
+    withOwner(() => {
       setActiveEntryId(null);
       setEditingEntry(entry);
       setSelectedDate(entry?.date ?? date);
       setShowEditor(true);
-    };
+    });
+  }
 
-    if (isOwner) {
-      open();
+  function markLeave(date: string, reason: string) {
+    const journal = activeJournal;
+    withOwner((pattern) => {
+      const entry = createEntry({
+        journal,
+        dayType: "leave",
+        leaveReason: reason,
+        date,
+        title: `On leave · ${reason}`,
+        content: "",
+        mood: "Normal",
+        location: "",
+        tags: [],
+        images: []
+      });
+      setEntries((current) => sortEntries([entry, ...current]));
+      setNotice("Marked as leave. Syncing...");
+      syncEntry(entry, "Leave day saved.", pattern);
+    });
+  }
+
+  async function togglePersonalVisibility() {
+    const next = !personalPublic;
+    setPersonalPublic(next);
+    const result = await savePersonalVisibility(next, ownerPattern);
+    if (result.ok) {
+      setNotice(next ? "Personal diary is now public." : "Personal diary is private again.");
       return;
     }
 
-    pendingEditorRef.current = open;
-    setShowUnlock(true);
+    setPersonalPublic(!next);
+    setNotice(`Could not change who can see it: ${result.reason}`);
   }
 
   function handleUnlock(pattern: string) {
@@ -141,8 +200,16 @@ export function JournalApp() {
     setOwnerPattern(pattern);
     setShowUnlock(false);
     setNotice("Owner tools unlocked.");
-    pendingEditorRef.current?.();
-    pendingEditorRef.current = null;
+    pendingOwnerActionRef.current?.(pattern);
+    pendingOwnerActionRef.current = null;
+
+    // Bring in the personal diary, which the server only sends to the owner.
+    fetchRemoteEntries(pattern).then((result) => {
+      if (result.ok && result.entries.length) {
+        setEntries(sortEntries(result.entries));
+        setPersonalPublic(result.personalPublic);
+      }
+    });
   }
 
   function handleLock() {
@@ -150,16 +217,24 @@ export function JournalApp() {
     setOwnerPattern("");
     setEditingEntry(null);
     setShowEditor(false);
+
+    if (!personalPublic) {
+      setEntries((current) => current.filter((entry) => entry.journal !== PRIVATE_JOURNAL));
+      if (activeJournal === PRIVATE_JOURNAL) {
+        setActiveJournal(DEFAULT_JOURNAL);
+      }
+    }
+
     setNotice("Owner tools locked.");
   }
 
-  async function syncEntry(entry: DiaryEntry, successMessage: string) {
-    if (!ownerPattern) {
+  async function syncEntry(entry: DiaryEntry, successMessage: string, pattern = ownerPattern) {
+    if (!pattern) {
       setNotice("Unlock owner tools before saving changes.");
       return;
     }
 
-    const result = await saveRemoteEntry(entry, ownerPattern);
+    const result = await saveRemoteEntry(entry, pattern);
     if (result.ok) {
       // The server copy links to its photos, which keeps browser storage small.
       setEntries((current) =>
@@ -300,7 +375,7 @@ export function JournalApp() {
       <AnimatePresence>
         {showExplorer ? (
           <MemoryExplorer
-            entries={entries}
+            entries={journalEntries}
             filters={filters}
             onChange={setFilters}
             onClose={() => setShowExplorer(false)}
@@ -310,8 +385,18 @@ export function JournalApp() {
 
       <section id="top" className="hero-section">
         <DiaryTimeline
+          journal={activeJournal}
+          tabs={journalTabs}
+          onJournalChange={setActiveJournal}
+          canShare={canShare}
+          visibility={
+            isOwner && activeJournal === PRIVATE_JOURNAL
+              ? { personalPublic, onToggle: togglePersonalVisibility }
+              : null
+          }
+          onMarkLeave={markLeave}
           entries={visibleEntries}
-          totalEntries={entries.length}
+          totalEntries={journalEntries.length}
           onOpen={(entry) => setActiveEntryId(entry.id)}
           onEdit={(entry) => openEditor(entry)}
           onWrite={(date) => openEditor(null, date)}
@@ -375,7 +460,8 @@ export function JournalApp() {
                 <X size={20} />
               </button>
               <DiaryEditor
-                key={editingEntry?.id ?? selectedDate}
+                key={editingEntry?.id ?? `${editorJournal}-${selectedDate}`}
+                journal={editorJournal}
                 selectedDate={selectedDate}
                 existingEntry={editingEntry ? null : existingForDate}
                 editingEntry={editingEntry}
@@ -417,7 +503,7 @@ export function JournalApp() {
           <OwnerUnlock
             onClose={() => {
               setShowUnlock(false);
-              pendingEditorRef.current = null;
+              pendingOwnerActionRef.current = null;
             }}
             onUnlock={handleUnlock}
           />
@@ -428,7 +514,8 @@ export function JournalApp() {
         {activeEntry ? (
           <DiaryReader
             entry={activeEntry}
-            entries={entries}
+            entries={journalEntries}
+            canShare={canShare}
             onClose={() => setActiveEntryId(null)}
             onEdit={(entry) => openEditor(entry)}
             onDelete={handleDelete}

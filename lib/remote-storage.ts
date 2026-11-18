@@ -1,7 +1,7 @@
 import type { DiaryEntry } from "@/types/diary";
 
 export type RemoteStorageResult =
-  | { ok: true; entries: DiaryEntry[] }
+  | { ok: true; entries: DiaryEntry[]; personalPublic: boolean }
   | { ok: false; reason: string };
 
 export type RemoteSaveResult =
@@ -16,15 +16,23 @@ export type OwnerVerifyResult =
   | { ok: true }
   | { ok: false; reason: string };
 
-export async function fetchRemoteEntries(): Promise<RemoteStorageResult> {
+// The owner's pattern lets the server include the private personal diary.
+export async function fetchRemoteEntries(ownerPattern = ""): Promise<RemoteStorageResult> {
   try {
-    const response = await fetch("/api/entries", { cache: "no-store" });
+    const response = await fetch("/api/entries", {
+      cache: "no-store",
+      headers: ownerPattern ? { "x-owner-pattern": ownerPattern } : undefined
+    });
     if (!response.ok) {
       return { ok: false, reason: "MongoDB is not connected yet." };
     }
 
-    const data = (await response.json()) as { entries?: DiaryEntry[] };
-    return { ok: true, entries: Array.isArray(data.entries) ? data.entries : [] };
+    const data = (await response.json()) as { entries?: DiaryEntry[]; personalPublic?: boolean };
+    return {
+      ok: true,
+      entries: Array.isArray(data.entries) ? data.entries : [],
+      personalPublic: data.personalPublic === true
+    };
   } catch {
     return { ok: false, reason: "Using this browser as your journal home." };
   }
@@ -64,6 +72,14 @@ export async function saveRemoteEntry(
   return saved ? { ok: true, entry: saved } : { ok: false, reason: "MongoDB did not return the memory." };
 }
 
+export async function savePersonalVisibility(
+  personalPublic: boolean,
+  ownerPattern: string
+): Promise<RemoteSaveResult> {
+  const result = await sendOwnerRequest("/api/settings", "PUT", ownerPattern, { personalPublic });
+  return result.ok ? { ok: true } : result;
+}
+
 export async function deleteRemoteEntry(
   id: string,
   ownerPattern: string
@@ -78,7 +94,7 @@ export async function deleteRemoteEntry(
 
 async function sendOwnerRequest(
   url: string,
-  method: "POST" | "DELETE",
+  method: "POST" | "PUT" | "DELETE",
   ownerPattern: string,
   body?: unknown
 ): Promise<{ ok: true; data: unknown } | { ok: false; reason: string }> {

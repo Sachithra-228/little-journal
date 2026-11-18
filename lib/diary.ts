@@ -1,3 +1,4 @@
+import { isWorkJournal, type DayType } from "@/lib/journals";
 import type { DiaryDraft, DiaryEntry, DiaryMood } from "@/types/diary";
 import { createId, monthKey, yearKey } from "@/lib/utils";
 
@@ -17,6 +18,15 @@ export const HOME_LOCATION = "Work from home";
 
 // "Sandbox Office" alone is too vague for Google Maps, so map the full address.
 const ONSITE_MAP_QUERY = "Sandbox Consultancy Services, 11B, 9th Lane, Ethul Kotte, Sri Lanka";
+
+// Pages written before day types existed get one from their place.
+export function deriveDayType(location: string): DayType | undefined {
+  if (location === ONSITE_LOCATION) {
+    return "onsite";
+  }
+
+  return location === HOME_LOCATION ? "remote" : undefined;
+}
 
 export function getMapQuery(location: string, point?: { lat: number; lng: number }) {
   if (point) {
@@ -60,8 +70,8 @@ export function deleteEntry(entries: DiaryEntry[], id: string) {
   return entries.filter((entry) => entry.id !== id);
 }
 
-export function getEntryByDate(entries: DiaryEntry[], date: string) {
-  return entries.find((entry) => entry.date === date) ?? null;
+export function getEntryByDate(entries: DiaryEntry[], date: string, journal: string) {
+  return entries.find((entry) => entry.date === date && entry.journal === journal) ?? null;
 }
 
 export function getEntryById(entries: DiaryEntry[], id: string) {
@@ -116,7 +126,12 @@ export function getMemoryStats(entries: DiaryEntry[]) {
 }
 
 function sanitizeDraft(draft: DiaryDraft): DiaryDraft {
+  const dayType = isWorkJournal(draft.journal) ? draft.dayType : undefined;
+
   return {
+    journal: draft.journal,
+    dayType,
+    leaveReason: dayType === "leave" ? draft.leaveReason : undefined,
     date: draft.date,
     title: draft.title.trim() || "Untitled memory",
     content: draft.content.trim(),

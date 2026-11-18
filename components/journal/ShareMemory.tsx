@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
 
 interface ShareMemoryProps {
-  entry: Pick<DiaryEntry, "date" | "title">;
+  entry: Pick<DiaryEntry, "journal" | "date" | "title">;
   buttonClassName?: string;
   align?: "start" | "end";
 }
@@ -53,7 +53,7 @@ export function ShareMemory({ entry, buttonClassName, align = "start" }: ShareMe
 
   function getShareDetails() {
     return {
-      url: `${window.location.origin}/memory/${entry.date}`,
+      url: `${window.location.origin}/memory/${entry.journal}/${entry.date}`,
       text: `${entry.title} — a memory from my Little Journal`
     };
   }
@@ -114,7 +114,7 @@ export function ShareMemory({ entry, buttonClassName, align = "start" }: ShareMe
 }
 
 interface ShareMenuProps {
-  entry: Pick<DiaryEntry, "date">;
+  entry: Pick<DiaryEntry, "journal" | "date">;
   align: "start" | "end";
   copied: boolean;
   details: { url: string; text: string };
@@ -170,7 +170,7 @@ function ShareMenu({ entry, align, copied, details, onCopy, onPick }: ShareMenuP
       <a
         className="share-option"
         role="menuitem"
-        href={`/memory/${entry.date}/card`}
+        href={`/memory/${entry.journal}/${entry.date}/card`}
         download={`little-journal-${entry.date}.png`}
         onClick={onPick}
       >

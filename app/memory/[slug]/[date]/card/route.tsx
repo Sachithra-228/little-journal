@@ -13,9 +13,12 @@ const colors = {
   line: "rgb(221, 211, 196)"
 };
 
-export async function GET(_request: Request, { params }: { params: Promise<{ date: string }> }) {
-  const { date } = await params;
-  const entry = await getSharedEntry(date);
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ slug: string; date: string }> }
+) {
+  const { slug, date } = await params;
+  const entry = await getSharedEntry(slug, date);
 
   if (!entry) {
     return new Response("Memory not found.", { status: 404 });
