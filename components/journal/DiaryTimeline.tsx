@@ -281,16 +281,12 @@ export function DiaryTimeline({
                     {selectedEntry.leaveReason ? ` · ${selectedEntry.leaveReason}` : ""}
                   </span>
                 ) : null}
-                {isWork && selectedEntry.dayType !== "leave" ? <span>{selectedEntry.mood}</span> : null}
                 {isWork && selectedEntry.location ? (
                   <span>
                     <MapPin size={14} />
                     {selectedEntry.location}
                   </span>
                 ) : null}
-                {isWork
-                  ? selectedEntry.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)
-                  : null}
               </div>
             ) : null}
 

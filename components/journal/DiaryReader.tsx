@@ -74,10 +74,9 @@ export function DiaryReader({
               <time dateTime={entry.date}>{formatLongDate(entry.date)}</time>
               <span>{formatWeekday(entry.date)}</span>
               <h2 id="reader-title">{entry.title}</h2>
-              {/* Personal pages show no mood, place or tags. */}
-              {isWork ? (
+              {/* Only work diaries record a place. */}
+              {isWork && entry.location ? (
                 <div className="reader-meta">
-                  <span>{entry.mood}</span>
                   {entry.location === HOME_LOCATION ? (
                     <span>
                       <MapPin size={15} />
@@ -117,14 +116,6 @@ export function DiaryReader({
             <p key={paragraph}>{paragraph}</p>
           ))}
         </div>
-
-        {isWork && entry.tags.length ? (
-          <div className="reader-tags">
-            {entry.tags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
-        ) : null}
 
         <footer className="reader-footer">
           <div className="reader-stepper">

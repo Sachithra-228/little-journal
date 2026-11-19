@@ -47,7 +47,6 @@ export function JournalApp() {
   const [ownerPattern, setOwnerPattern] = useState("");
   const [filters, setFilters] = useState<MemoryFilters>({
     query: "",
-    mood: "All",
     month: "",
     year: ""
   });

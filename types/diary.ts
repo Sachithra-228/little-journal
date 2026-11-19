@@ -56,7 +56,6 @@ export interface DiaryDraft {
 
 export interface MemoryFilters {
   query: string;
-  mood: "All" | DiaryMood;
   month: string;
   year: string;
 }

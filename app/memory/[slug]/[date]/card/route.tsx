@@ -32,10 +32,8 @@ export async function GET(
   const day = parseLocalDate(entry.date);
   const dayNumber = String(day.getDate());
   const monthLabel = new Intl.DateTimeFormat("en", { month: "long" }).format(day).toUpperCase();
-  // Personal pages carry no mood or place.
-  const details = isWorkJournal(entry.journal)
-    ? [entry.mood, entry.location].filter(Boolean).join("  ·  ")
-    : "";
+  // Only work diaries record a place.
+  const details = isWorkJournal(entry.journal) ? entry.location : "";
   const cover = entry.images[0]?.dataUrl;
 
   const fontText = `${title}${excerpt}${dateLabel}${details}${dayNumber}${monthLabel}Little Journal`;
