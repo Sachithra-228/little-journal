@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { Lock, Moon, PenLine, Search, Sun, Unlock, X } from "lucide-react";
 import { DiaryEditor } from "@/components/journal/DiaryEditor";
 import { DiaryReader } from "@/components/journal/DiaryReader";
@@ -39,7 +39,7 @@ export function JournalApp() {
   const [darkMode, setDarkMode] = useState(false);
   const [showExplorer, setShowExplorer] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
+  const [introDone, setIntroDone] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [activeJournal, setActiveJournal] = useState(DEFAULT_JOURNAL);
   const [personalPublic, setPersonalPublic] = useState(false);
@@ -56,7 +56,6 @@ export function JournalApp() {
 
   useEffect(() => {
     let cancelled = false;
-    const introTimer = window.setTimeout(() => setShowIntro(false), 2350);
     const savedOwnerPattern = window.sessionStorage.getItem("little-journal-owner-pattern") ?? "";
     // Until the server says otherwise, keep personal pages off a locked screen.
     const localEntries = sortEntries(getEntries()).filter(
@@ -93,7 +92,6 @@ export function JournalApp() {
 
     return () => {
       cancelled = true;
-      window.clearTimeout(introTimer);
     };
   }, []);
 
@@ -321,7 +319,9 @@ export function JournalApp() {
   return (
     <main className="min-h-screen bg-paper text-ink transition-colors duration-500">
       <div className="paper-grain" aria-hidden="true" />
-      <AnimatePresence>{showIntro ? <IntroOverlay todayLabel={todayLabel} /> : null}</AnimatePresence>
+      {introDone ? null : (
+        <IntroOverlay todayLabel={todayLabel} onDone={() => setIntroDone(true)} />
+      )}
       <nav className="journal-nav" aria-label="Primary">
         <a href="#top" className="brand-mark">
           Little Journal
@@ -407,8 +407,14 @@ export function JournalApp() {
               className="hero-inner"
             >
               <p className="eyebrow">Private daily pages</p>
-              <h1>Little Journal</h1>
-              <p className="hero-line">Small moments. Big memories.</p>
+              {/* Hidden until the intro words have glided into this exact spot. */}
+              <h1 style={{ visibility: introDone ? "visible" : "hidden" }}>
+                <span className="hero-word">Little</span>{" "}
+                <span className="hero-word">Journal</span>
+              </h1>
+              <p className="hero-line" style={{ visibility: introDone ? "visible" : "hidden" }}>
+                <span className="hero-word">Small moments. Big memories.</span>
+              </p>
               <div className="today-block" aria-label={`Today is ${todayLabel}`}>
                 <span>{new Intl.DateTimeFormat("en", { weekday: "long" }).format(new Date())}</span>
                 <strong>
@@ -538,30 +544,94 @@ async function uploadLocalEntries(entries: DiaryEntry[], ownerPattern: string) {
   }
 }
 
-function IntroOverlay({ todayLabel }: { todayLabel: string }) {
-  const lines = ["Little Journal", "Small moments. Big memories.", todayLabel];
+const INTRO_HOLD_MS = 2100;
+const GLIDE = { duration: 0.95, ease: [0.22, 1, 0.36, 1] as const };
+
+function IntroOverlay({ todayLabel, onDone }: { todayLabel: string; onDone: () => void }) {
+  const [gliding, setGliding] = useState(false);
+  const wordRefs = [
+    useRef<HTMLSpanElement>(null),
+    useRef<HTMLSpanElement>(null),
+    useRef<HTMLSpanElement>(null)
+  ];
+  const wordControls = [useAnimationControls(), useAnimationControls(), useAnimationControls()];
+
+  useEffect(() => {
+    const timer = window.setTimeout(async () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        onDone();
+        return;
+      }
+
+      // Each intro word travels to the matching word on the landing page,
+      // shrinking to its size, while only the backdrop and date fade away.
+      const targets = document.querySelectorAll<HTMLElement>(".hero-inner .hero-word");
+      setGliding(true);
+      await Promise.all(
+        wordRefs.map((ref, index) => {
+          const from = ref.current;
+          const to = targets[index];
+          if (!from || !to) {
+            return Promise.resolve();
+          }
+
+          const fromBox = from.getBoundingClientRect();
+          const toBox = to.getBoundingClientRect();
+          const scale =
+            parseFloat(getComputedStyle(to).fontSize) / parseFloat(getComputedStyle(from).fontSize);
+
+          return wordControls[index].start({
+            x: toBox.left - fromBox.left,
+            y: toBox.top - fromBox.top,
+            scale,
+            transition: GLIDE
+          });
+        })
+      );
+      onDone();
+    }, INTRO_HOLD_MS);
+
+    return () => window.clearTimeout(timer);
+    // The intro runs once, on first load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const appear = (index: number) => ({
+    initial: { opacity: 0, y: 18 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.55, delay: index * 0.34, ease: "easeOut" as const }
+  });
 
   return (
-    <motion.div
-      className="intro-overlay"
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0, y: -18 }}
-      transition={{ duration: 0.45, ease: "easeInOut" }}
-      aria-hidden="true"
-    >
-      <div>
-        {lines.map((line, index) => (
-          <motion.span
-            key={line}
-            className={index === 0 ? "intro-title" : "intro-line"}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: index * 0.34, ease: "easeOut" }}
-          >
-            {line}
+    <div className="intro-overlay" aria-hidden="true">
+      <motion.div
+        className="intro-backdrop"
+        animate={{ opacity: gliding ? 0 : 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      />
+      <div className="intro-stack">
+        <motion.span className="intro-title" {...appear(0)}>
+          <motion.span ref={wordRefs[0]} className="intro-word" animate={wordControls[0]}>
+            Little
+          </motion.span>{" "}
+          <motion.span ref={wordRefs[1]} className="intro-word" animate={wordControls[1]}>
+            Journal
           </motion.span>
-        ))}
+        </motion.span>
+        <motion.span className="intro-line" {...appear(1)}>
+          <motion.span ref={wordRefs[2]} className="intro-word" animate={wordControls[2]}>
+            Small moments. Big memories.
+          </motion.span>
+        </motion.span>
+        <motion.span
+          className="intro-line"
+          {...appear(2)}
+          animate={{ opacity: gliding ? 0 : 1, y: 0 }}
+          transition={gliding ? { duration: 0.4 } : appear(2).transition}
+        >
+          {todayLabel}
+        </motion.span>
       </div>
-    </motion.div>
+    </div>
   );
 }
