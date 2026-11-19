@@ -1,17 +1,6 @@
 import { isWorkJournal, type DayType } from "@/lib/journals";
-import type { DiaryDraft, DiaryEntry, DiaryMood } from "@/types/diary";
+import type { DiaryDraft, DiaryEntry } from "@/types/diary";
 import { createId, monthKey, yearKey } from "@/lib/utils";
-
-export const moodOptions: Array<{ mood: DiaryMood }> = [
-  { mood: "Happy" },
-  { mood: "Calm" },
-  { mood: "Excited" },
-  { mood: "Grateful" },
-  { mood: "Sad" },
-  { mood: "Tired" },
-  { mood: "Normal" },
-  { mood: "Motivated" }
-];
 
 export const ONSITE_LOCATION = "Sandbox Office, Ethul Kotte";
 export const HOME_LOCATION = "Work from home";
@@ -36,17 +25,6 @@ export function getMapQuery(location: string, point?: { lat: number; lng: number
 
   return location === ONSITE_LOCATION ? ONSITE_MAP_QUERY : location;
 }
-
-export const starterTags = [
-  "Personal",
-  "Work",
-  "Friends",
-  "Family",
-  "Travel",
-  "University",
-  "Quiet",
-  "Growth"
-];
 
 export function createEntry(draft: DiaryDraft): DiaryEntry {
   const now = new Date().toISOString();
@@ -87,7 +65,6 @@ export function filterEntries(
   entries: DiaryEntry[],
   filters: {
     query: string;
-    mood: "All" | DiaryMood;
     month: string;
     year: string;
   }
@@ -105,11 +82,10 @@ export function filterEntries(
       .toLowerCase();
 
     const matchesQuery = !query || searchable.includes(query);
-    const matchesMood = filters.mood === "All" || entry.mood === filters.mood;
     const matchesMonth = !filters.month || monthKey(entry.date) === filters.month;
     const matchesYear = !filters.year || yearKey(entry.date) === filters.year;
 
-    return matchesQuery && matchesMood && matchesMonth && matchesYear;
+    return matchesQuery && matchesMonth && matchesYear;
   });
 }
 

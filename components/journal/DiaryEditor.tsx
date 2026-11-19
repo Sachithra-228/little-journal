@@ -7,27 +7,16 @@ import {
   ExternalLink,
   LocateFixed,
   MapPin,
-  Save,
-  Sparkles,
-  Tag,
-  X
+  Save
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { MoodSelector } from "@/components/journal/MoodSelector";
 import { PhotoUploader } from "@/components/journal/PhotoUploader";
 import { DatePicker } from "@/components/journal/DatePicker";
 import { DayTypeSwitch } from "@/components/journal/DayTypeSwitch";
-import { suggestTags } from "@/lib/auto-tags";
-import { HOME_LOCATION, ONSITE_LOCATION, getMapQuery, starterTags } from "@/lib/diary";
+import { HOME_LOCATION, ONSITE_LOCATION, getMapQuery } from "@/lib/diary";
 import { getJournal, isWorkJournal, leaveReasons, type DayType } from "@/lib/journals";
 import { formatLongDate, formatWeekday, toDateInputValue } from "@/lib/utils";
-import type {
-  DiaryDraft,
-  DiaryEntry,
-  DiaryImage,
-  DiaryLocationPoint,
-  DiaryMood
-} from "@/types/diary";
+import type { DiaryDraft, DiaryEntry, DiaryImage, DiaryLocationPoint } from "@/types/diary";
 
 interface DiaryEditorProps {
   journal: string;
@@ -54,7 +43,6 @@ export function DiaryEditor({
   const isWork = isWorkJournal(journal);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [content, setContent] = useState(initial?.content ?? "");
-  const [mood, setMood] = useState<DiaryMood>(initial?.mood ?? "Calm");
   const [location, setLocation] = useState(initial?.location ?? (isWork ? ONSITE_LOCATION : ""));
   const [dayType, setDayType] = useState<DayType | null>(
     initial?.dayType ?? (isWork ? "onsite" : null)
@@ -63,16 +51,6 @@ export function DiaryEditor({
   const [locationPoint, setLocationPoint] = useState<DiaryLocationPoint | undefined>(
     initial?.locationPoint
   );
-  const [manualTags, setManualTags] = useState<string[]>(initial?.tags ?? []);
-  // When revisiting a page, only words typed from now on add new auto tags.
-  const [dismissedTags, setDismissedTags] = useState<string[]>(() =>
-    initial
-      ? suggestTags(`${initial.title}\n${initial.content}`).filter(
-          (tag) => !initial.tags.includes(tag)
-        )
-      : []
-  );
-  const [tagInput, setTagInput] = useState("");
   const [images, setImages] = useState<DiaryImage[]>(initial?.images ?? []);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [locationStatus, setLocationStatus] = useState("");
@@ -80,34 +58,7 @@ export function DiaryEditor({
   const onLeave = isWork && dayType === "leave";
   // A leave day needs no story; the reason is enough.
   const canSave = content.trim().length > 0 || title.trim().length > 0 || onLeave;
-  const autoTags = useMemo(() => suggestTags(`${title}\n${content}`), [title, content]);
-  const tags = useMemo(
-    () =>
-      Array.from(
-        new Set([...manualTags, ...autoTags.filter((tag) => !dismissedTags.includes(tag))])
-      ).slice(0, 12),
-    [autoTags, dismissedTags, manualTags]
-  );
   const dateLabel = useMemo(() => formatLongDate(selectedDate), [selectedDate]);
-
-  function addTag(tag: string) {
-    const normalized = tag.trim();
-    if (!normalized) {
-      return;
-    }
-    setManualTags((current) =>
-      current.includes(normalized) ? current : [...current, normalized].slice(0, 12)
-    );
-    setDismissedTags((current) => current.filter((item) => item !== normalized));
-    setTagInput("");
-  }
-
-  function removeTag(tag: string) {
-    setManualTags((current) => current.filter((item) => item !== tag));
-    if (autoTags.includes(tag)) {
-      setDismissedTags((current) => [...current, tag]);
-    }
-  }
 
   function chooseDayType(next: DayType) {
     setDayType(next);
@@ -129,23 +80,21 @@ export function DiaryEditor({
       date: selectedDate,
       title: title.trim() || (onLeave ? `On leave${leaveReason ? ` · ${leaveReason}` : ""}` : title),
       content,
-      mood,
+      // Mood and tags are no longer asked for; older pages keep what they had.
+      mood: initial?.mood ?? "Normal",
       location: isWork ? location : "",
       locationPoint: isWork ? locationPoint : undefined,
-      tags: isWork ? tags : [],
+      tags: initial?.tags ?? [],
       images
     });
 
     if (!editingEntry) {
       setTitle("");
       setContent("");
-      setMood("Calm");
       setLocation(isWork ? ONSITE_LOCATION : "");
       setDayType(isWork ? "onsite" : null);
       setLeaveReason("");
       setLocationPoint(undefined);
-      setManualTags([]);
-      setDismissedTags([]);
       setImages([]);
       setDetailsOpen(false);
     }
@@ -270,25 +219,6 @@ export function DiaryEditor({
             rows={10}
           />
 
-          {isWork && tags.length ? (
-            <div className="auto-tags-row" aria-label="Tags for this page">
-              <Sparkles size={15} aria-hidden="true" />
-              {tags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  className={manualTags.includes(tag) ? "tag-chip active" : "tag-chip auto"}
-                  aria-label={`Remove tag ${tag}`}
-                  title={manualTags.includes(tag) ? "Your tag" : "Suggested from what you wrote"}
-                  onClick={() => removeTag(tag)}
-                >
-                  {tag}
-                  <X size={12} aria-hidden="true" />
-                </button>
-              ))}
-            </div>
-          ) : null}
-
           <section className="details-drawer">
             <button
               className="details-toggle"
@@ -296,7 +226,7 @@ export function DiaryEditor({
               aria-expanded={detailsOpen}
               onClick={() => setDetailsOpen((value) => !value)}
             >
-              <span>{isWork ? "Add location, mood, tags, photos" : "Add photos"}</span>
+              <span>{isWork ? "Add place and photos" : "Add photos"}</span>
               <ChevronDown size={18} aria-hidden="true" />
             </button>
 
@@ -308,86 +238,44 @@ export function DiaryEditor({
                 transition={{ duration: 0.24 }}
               >
                 {isWork ? (
-                  <>
-                    <section className="location-panel" aria-labelledby="location-heading">
-                      <div className="location-head">
-                        <span id="location-heading">
-                          <MapPin size={16} />
-                          {isWork ? "Place" : "Where were you today?"}
-                        </span>
-                        <button className="quiet-button" type="button" onClick={useCurrentLocation}>
-                          <LocateFixed size={16} />
-                          Use current location
-                        </button>
-                      </div>
-                      <label className="soft-field compact">
-                        <span className="sr-only">Location name or place</span>
-                        <input
-                          value={location}
-                          onChange={(event) => {
-                            setLocation(event.target.value);
-                            setLocationPoint(undefined);
-                          }}
-                          placeholder={isWork ? "Somewhere else? Type a place" : "Add a place"}
-                        />
-                      </label>
-                      {locationStatus ? <p className="form-note">{locationStatus}</p> : null}
-                      {location && location !== HOME_LOCATION ? (
-                        <div className="mini-map">
-                          <iframe
-                            title="Selected memory location map"
-                            src={getMapEmbed(location, locationPoint)}
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                          />
-                          <a href={mapHref} target="_blank" rel="noreferrer">
-                            <ExternalLink size={15} />
-                            Open map
-                          </a>
-                        </div>
-                      ) : null}
-                    </section>
-
-                    <MoodSelector value={mood} onChange={setMood} />
-
-                    <div className="tag-panel">
-                      <span className="tag-title">
-                        <Tag size={16} />
-                        Tags
+                  <section className="location-panel" aria-labelledby="location-heading">
+                    <div className="location-head">
+                      <span id="location-heading">
+                        <MapPin size={16} />
+                        Place
                       </span>
-                      <div className="tag-options">
-                        {starterTags.map((tag) => (
-                          <button
-                            className={tags.includes(tag) ? "tag-chip active" : "tag-chip"}
-                            aria-pressed={tags.includes(tag)}
-                            key={tag}
-                            type="button"
-                            onClick={() =>
-                              tags.includes(tag) ? removeTag(tag) : addTag(tag)
-                            }
-                          >
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="tag-input-row">
-                        <input
-                          value={tagInput}
-                          onChange={(event) => setTagInput(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              addTag(tagInput);
-                            }
-                          }}
-                          placeholder="Add your own tag"
-                        />
-                        <button type="button" className="quiet-button" onClick={() => addTag(tagInput)}>
-                          Add
-                        </button>
-                      </div>
+                      <button className="quiet-button" type="button" onClick={useCurrentLocation}>
+                        <LocateFixed size={16} />
+                        Use current location
+                      </button>
                     </div>
-                  </>
+                    <label className="soft-field compact">
+                      <span className="sr-only">Location name or place</span>
+                      <input
+                        value={location}
+                        onChange={(event) => {
+                          setLocation(event.target.value);
+                          setLocationPoint(undefined);
+                        }}
+                        placeholder="Somewhere else? Type a place"
+                      />
+                    </label>
+                    {locationStatus ? <p className="form-note">{locationStatus}</p> : null}
+                    {location && location !== HOME_LOCATION ? (
+                      <div className="mini-map">
+                        <iframe
+                          title="Selected memory location map"
+                          src={getMapEmbed(location, locationPoint)}
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                        <a href={mapHref} target="_blank" rel="noreferrer">
+                          <ExternalLink size={15} />
+                          Open map
+                        </a>
+                      </div>
+                    ) : null}
+                  </section>
                 ) : null}
 
                 <PhotoUploader images={images} onChange={setImages} />

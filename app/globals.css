@@ -420,7 +420,6 @@ img {
 
 .date-picker input,
 .soft-field input,
-.tag-input-row input,
 .explorer-grid input,
 .explorer-grid select {
   width: 100%;
@@ -495,10 +494,8 @@ input::placeholder {
 }
 
 .details-drawer,
-.mood-selector,
 .soft-field,
 .location-panel,
-.tag-panel,
 .photo-panel {
   border: 1px solid rgb(var(--line));
   border-radius: 8px;
@@ -540,47 +537,13 @@ input::placeholder {
   overflow: hidden;
 }
 
-.mood-selector legend {
-  padding: 0 8px;
-  color: rgb(var(--muted));
-  font-weight: 700;
-}
-
-.mood-selector {
-  min-inline-size: 0;
-}
-
-.mood-selector > div {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-}
-
-.mood-selector > div::-webkit-scrollbar {
-  display: none;
-}
-
-.mood-selector .mood-pill {
-  flex: none;
-  scroll-snap-align: start;
-  white-space: nowrap;
-}
-
-.tag-options,
-.selected-tags,
-.reader-tags {
+.tag-options {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.mood-pill,
-.tag-chip,
-.selected-tags button,
-.reader-tags span {
+.tag-chip {
   border: 1px solid rgb(var(--line));
   border-radius: 999px;
   padding: 8px 12px;
@@ -588,7 +551,6 @@ input::placeholder {
   color: rgb(var(--muted));
 }
 
-.mood-pill.active,
 .tag-chip.active {
   border-color: rgb(var(--accent));
   color: rgb(var(--ink));
@@ -665,28 +627,6 @@ input::placeholder {
   box-shadow: 0 8px 20px rgb(var(--shadow) / 0.18);
 }
 
-.auto-tags-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  color: rgb(var(--accent));
-}
-
-.auto-tags-row .tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  font-size: 0.86rem;
-}
-
-.auto-tags-row .tag-chip.auto {
-  border-style: dashed;
-  border-color: rgb(var(--accent) / 0.45);
-  color: rgb(var(--ink));
-}
-
 .location-head {
   display: flex;
   flex-wrap: wrap;
@@ -735,7 +675,6 @@ input::placeholder {
 
 .soft-field span,
 .location-head span,
-.tag-title,
 .photo-panel-head span,
 .explorer-heading span {
   display: inline-flex;
@@ -745,22 +684,9 @@ input::placeholder {
   font-weight: 700;
 }
 
-.tag-panel,
 .photo-panel {
   display: grid;
   gap: 14px;
-}
-
-.tag-input-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  border-top: 1px solid rgb(var(--line));
-  padding-top: 14px;
-}
-
-.selected-tags button {
-  color: rgb(var(--ink));
 }
 
 .photo-panel-head {
@@ -1485,10 +1411,6 @@ input::placeholder {
   margin: 0 0 1.1em;
 }
 
-.reader-tags {
-  margin-top: 28px;
-}
-
 .reader-footer {
   justify-content: space-between;
   border-top: 1px solid rgb(var(--line));
@@ -1866,10 +1788,6 @@ input::placeholder {
 
   .quick-editor-frame .story-textarea {
     min-height: 230px;
-  }
-
-  .tag-input-row {
-    grid-template-columns: 1fr;
   }
 
   .reader-stepper {

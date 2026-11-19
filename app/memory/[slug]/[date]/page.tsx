@@ -63,7 +63,7 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
     notFound();
   }
 
-  // Personal pages show no mood, place or tags.
+  // Only work diaries record a place.
   const isWork = isWorkJournal(entry.journal);
   // Link to each photo instead of inlining every one into the page.
   const [coverImage, ...extraImages] = withImageUrls(entry).images;
@@ -81,15 +81,12 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
           <header className="reader-header">
             <time dateTime={entry.date}>{formatLongDate(entry.date)}</time>
             <h1>{entry.title}</h1>
-            {isWork ? (
+            {isWork && entry.location ? (
               <div className="reader-meta">
-                <span>{entry.mood}</span>
-                {entry.location ? (
-                  <span>
-                    <MapPin size={15} />
-                    {entry.location}
-                  </span>
-                ) : null}
+                <span>
+                  <MapPin size={15} />
+                  {entry.location}
+                </span>
               </div>
             ) : null}
           </header>
@@ -116,14 +113,6 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
             <p key={index}>{paragraph}</p>
           ))}
         </div>
-
-        {isWork && entry.tags.length ? (
-          <div className="reader-tags">
-            {entry.tags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
-        ) : null}
 
         <footer className="reader-footer">
           <ShareMemory

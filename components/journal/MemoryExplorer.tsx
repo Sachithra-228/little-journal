@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { SlidersHorizontal, X } from "lucide-react";
-import { moodOptions } from "@/lib/diary";
 import { monthKey, parseLocalDate, yearKey } from "@/lib/utils";
 import type { DiaryEntry, MemoryFilters } from "@/types/diary";
 
@@ -47,22 +46,6 @@ export function MemoryExplorer({
             onChange={(event) => onChange({ ...filters, query: event.target.value })}
             placeholder="Title, story, tag, place"
           />
-        </label>
-        <label>
-          <span>Mood</span>
-          <select
-            value={filters.mood}
-            onChange={(event) =>
-              onChange({ ...filters, mood: event.target.value as MemoryFilters["mood"] })
-            }
-          >
-            <option value="All">All moods</option>
-            {moodOptions.map((option) => (
-              <option key={option.mood} value={option.mood}>
-                {option.mood}
-              </option>
-            ))}
-          </select>
         </label>
         <label>
           <span>Month</span>
