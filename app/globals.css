@@ -1054,7 +1054,6 @@ input::placeholder {
   color: rgb(var(--accent));
 }
 
-.task-head h3 span,
 .task-count {
   color: rgb(var(--muted));
   font-size: 0.8rem;
