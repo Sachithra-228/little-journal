@@ -905,7 +905,7 @@ input::placeholder {
 
 .calendar-stage {
   position: relative;
-  width: min(1180px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
   display: flex;
   align-items: flex-start;
@@ -917,6 +917,32 @@ input::placeholder {
   flex: 1 1 0;
   align-self: center;
   min-width: 0;
+}
+
+.calendar-aside {
+  flex: 0 0 340px;
+  min-width: 0;
+}
+
+.calendar-aside .task-card {
+  width: 100%;
+  margin-top: 0;
+}
+
+/* Too narrow for three columns: the tasks drop under the calendar. */
+@media (max-width: 1280px) and (min-width: 821px) {
+  .calendar-stage {
+    flex-wrap: wrap;
+  }
+
+  .calendar-lead {
+    flex-basis: 360px;
+  }
+
+  .calendar-aside {
+    flex: 0 0 400px;
+    margin-left: auto;
+  }
 }
 
 .memory-calendar {
@@ -1909,6 +1935,12 @@ input::placeholder {
 
   .calendar-lead {
     flex: none;
+  }
+
+  .calendar-aside {
+    flex: none;
+    width: min(420px, 100%);
+    margin-inline: auto;
   }
 
   .memory-calendar {
