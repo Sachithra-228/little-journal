@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ListTodo, Plus, X } from "lucide-react";
-import { getJournal } from "@/lib/journals";
 import { deleteTasks, fetchTasks, saveTask } from "@/lib/remote-storage";
 import { cn, createId, toDateInputValue } from "@/lib/utils";
 import type { DiaryTask } from "@/types/diary";
@@ -113,7 +112,6 @@ export function TaskList({ journal, ownerPattern }: TaskListProps) {
         <h3 id="task-heading">
           <ListTodo size={17} />
           Today&apos;s tasks
-          <span>{getJournal(journal).name}</span>
         </h3>
         {visible.length ? (
           <span className="task-count">
