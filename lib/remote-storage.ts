@@ -1,4 +1,4 @@
-import type { DiaryEntry } from "@/types/diary";
+import type { DiaryEntry, DiaryTask } from "@/types/diary";
 
 export type RemoteStorageResult =
   | { ok: true; entries: DiaryEntry[]; personalPublic: boolean }
@@ -80,6 +80,37 @@ export async function savePersonalVisibility(
   return result.ok ? { ok: true } : result;
 }
 
+export async function fetchTasks(
+  journal: string,
+  ownerPattern: string
+): Promise<{ ok: true; tasks: DiaryTask[] } | { ok: false; reason: string }> {
+  const result = await sendOwnerRequest(
+    `/api/tasks?journal=${encodeURIComponent(journal)}`,
+    "GET",
+    ownerPattern
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  const tasks = (result.data as { tasks?: DiaryTask[] } | null)?.tasks;
+  return { ok: true, tasks: Array.isArray(tasks) ? tasks : [] };
+}
+
+export async function saveTask(task: DiaryTask, ownerPattern: string): Promise<RemoteSaveResult> {
+  const result = await sendOwnerRequest("/api/tasks", "POST", ownerPattern, { task });
+  return result.ok ? { ok: true } : result;
+}
+
+export async function deleteTasks(ids: string[], ownerPattern: string): Promise<RemoteSaveResult> {
+  const result = await sendOwnerRequest(
+    `/api/tasks?ids=${ids.map(encodeURIComponent).join(",")}`,
+    "DELETE",
+    ownerPattern
+  );
+  return result.ok ? { ok: true } : result;
+}
+
 export async function deleteRemoteEntry(
   id: string,
   ownerPattern: string
@@ -94,7 +125,7 @@ export async function deleteRemoteEntry(
 
 async function sendOwnerRequest(
   url: string,
-  method: "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   ownerPattern: string,
   body?: unknown
 ): Promise<{ ok: true; data: unknown } | { ok: false; reason: string }> {

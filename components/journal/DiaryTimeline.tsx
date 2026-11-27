@@ -17,6 +17,7 @@ import {
 import Image from "next/image";
 import { ShareMemory } from "@/components/journal/ShareMemory";
 import { isWorkJournal, leaveReasons, type DayType, type Journal } from "@/lib/journals";
+import { getPoyaName } from "@/lib/poya";
 import { cn, formatLongDate, monthKey, parseLocalDate, toDateInputValue } from "@/lib/utils";
 import type { DiaryEntry } from "@/types/diary";
 
@@ -74,6 +75,10 @@ export function DiaryTimeline({
   const emptySelectedDate = selectedDate && !selectedEntry ? selectedDate : null;
   const monthEntries = days.flatMap((day) => entriesByDate.get(day) ?? []);
   const monthCount = monthEntries.length;
+  const monthPoyas = days.flatMap((day) => {
+    const name = getPoyaName(day);
+    return name ? [{ day, name }] : [];
+  });
   const dayTypeCounts = (Object.keys(dayTypeLabels) as DayType[]).map((type) => ({
     type,
     count: monthEntries.filter((entry) => entry.dayType === type).length
@@ -180,6 +185,7 @@ export function DiaryTimeline({
           {days.map((day) => {
             const entry = entriesByDate.get(day);
             const canWrite = !entry && day <= today;
+            const poya = getPoyaName(day);
 
             return (
               <button
@@ -191,16 +197,20 @@ export function DiaryTimeline({
                   entry?.dayType && `day-${entry.dayType}`,
                   canWrite && "can-write",
                   day === today && "today",
-                  day === selectedDate && "selected"
+                  day === selectedDate && "selected",
+                  poya && "poya"
                 )}
                 disabled={!entry && !canWrite}
                 aria-pressed={entry || canWrite ? day === selectedDate : undefined}
-                aria-label={
-                  entry
-                    ? `${formatLongDate(day)}: ${entry.dayType ? `${dayTypeLabels[entry.dayType]}, ` : ""}${entry.title}`
-                    : formatLongDate(day)
-                }
-                title={entry?.title}
+                aria-label={[
+                  formatLongDate(day),
+                  poya,
+                  entry?.dayType ? dayTypeLabels[entry.dayType] : null,
+                  entry?.title
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+                title={[poya, entry?.title].filter(Boolean).join(" · ") || undefined}
                 onClick={() => selectDate(day)}
               >
                 {Number(day.slice(8))}
@@ -209,13 +219,22 @@ export function DiaryTimeline({
           })}
         </div>
 
-        {isWork ? (
+        {isWork || monthPoyas.length ? (
           <ul className="calendar-legend" aria-label="Day colours this month">
-            {dayTypeCounts.map(({ type, count }) => (
-              <li key={type} className={`day-${type}`}>
+            {isWork
+              ? dayTypeCounts.map(({ type, count }) => (
+                  <li key={type} className={`day-${type}`}>
+                    <span className="calendar-legend-dot" aria-hidden="true" />
+                    {dayTypeLabels[type]}
+                    <strong>{count}</strong>
+                  </li>
+                ))
+              : null}
+            {monthPoyas.map(({ day, name }) => (
+              <li key={day} className="poya-legend">
                 <span className="calendar-legend-dot" aria-hidden="true" />
-                {dayTypeLabels[type]}
-                <strong>{count}</strong>
+                {name.replace(" Full Moon Poya Day", " Poya")}
+                <strong>{Number(day.slice(8))}</strong>
               </li>
             ))}
           </ul>
@@ -272,6 +291,9 @@ export function DiaryTimeline({
             </button>
 
             <time dateTime={selectedEntry.date}>{formatLongDate(selectedEntry.date)}</time>
+            {getPoyaName(selectedEntry.date) ? (
+              <p className="poya-note">{getPoyaName(selectedEntry.date)}</p>
+            ) : null}
             <h3>{selectedEntry.title}</h3>
             {isWork ? (
               <div className="entry-meta">
@@ -365,6 +387,9 @@ export function DiaryTimeline({
             </button>
 
             <time dateTime={emptySelectedDate}>{formatLongDate(emptySelectedDate)}</time>
+            {getPoyaName(emptySelectedDate) ? (
+              <p className="poya-note">{getPoyaName(emptySelectedDate)}</p>
+            ) : null}
             <h3>No memory for this day yet.</h3>
             <p>
               {isWork
