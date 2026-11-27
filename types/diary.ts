@@ -59,3 +59,14 @@ export interface MemoryFilters {
   month: string;
   year: string;
 }
+
+export interface DiaryTask {
+  id: string;
+  journal: string;
+  text: string;
+  done: boolean;
+  // The day the task was added, and the day it was ticked off.
+  date: string;
+  doneDate?: string;
+  createdAt: string;
+}

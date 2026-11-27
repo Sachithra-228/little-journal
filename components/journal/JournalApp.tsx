@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
-import { Lock, Moon, PenLine, Search, Sun, Unlock, X } from "lucide-react";
+import { Lock, Moon, Search, Sun, Unlock, X } from "lucide-react";
 import { DiaryEditor } from "@/components/journal/DiaryEditor";
 import { DiaryReader } from "@/components/journal/DiaryReader";
 import { DiaryTimeline } from "@/components/journal/DiaryTimeline";
 import { MemoryExplorer } from "@/components/journal/MemoryExplorer";
 import { OwnerUnlock } from "@/components/journal/OwnerUnlock";
+import { TaskList } from "@/components/journal/TaskList";
 import {
   createEntry,
   deleteEntry,
@@ -425,11 +426,15 @@ export function JournalApp() {
                   }).format(new Date())}
                 </strong>
               </div>
-              <p className="hero-question">What happened today?</p>
-              <button className="primary-button" type="button" onClick={() => openEditor(null)}>
-                <PenLine size={18} />
-                Start writing
-              </button>
+              {/* The owner's to-do list for the day; private, so it needs the pattern. */}
+              {isOwner ? (
+                <TaskList journal={activeJournal} ownerPattern={ownerPattern} />
+              ) : (
+                <button className="quiet-button task-unlock" type="button" onClick={() => setShowUnlock(true)}>
+                  <Lock size={16} />
+                  Today&apos;s tasks
+                </button>
+              )}
             </motion.div>
           }
         />
