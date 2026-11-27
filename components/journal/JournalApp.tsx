@@ -197,7 +197,6 @@ export function JournalApp() {
     window.sessionStorage.setItem("little-journal-owner-pattern", pattern);
     setOwnerPattern(pattern);
     setShowUnlock(false);
-    setNotice("Owner tools unlocked.");
     pendingOwnerActionRef.current?.(pattern);
     pendingOwnerActionRef.current = null;
 
@@ -223,7 +222,6 @@ export function JournalApp() {
       }
     }
 
-    setNotice("Owner tools locked.");
   }
 
   async function syncEntry(entry: DiaryEntry, successMessage: string, pattern = ownerPattern) {
@@ -400,6 +398,8 @@ export function JournalApp() {
           onOpen={(entry) => setActiveEntryId(entry.id)}
           onEdit={(entry) => openEditor(entry)}
           onWrite={(date) => openEditor(null, date)}
+          // The owner's to-do list; visitors never see it, even as a locked button.
+          aside={isOwner ? <TaskList journal={activeJournal} ownerPattern={ownerPattern} /> : null}
           lead={
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -426,15 +426,6 @@ export function JournalApp() {
                   }).format(new Date())}
                 </strong>
               </div>
-              {/* The owner's to-do list for the day; private, so it needs the pattern. */}
-              {isOwner ? (
-                <TaskList journal={activeJournal} ownerPattern={ownerPattern} />
-              ) : (
-                <button className="quiet-button task-unlock" type="button" onClick={() => setShowUnlock(true)}>
-                  <Lock size={16} />
-                  Today&apos;s tasks
-                </button>
-              )}
             </motion.div>
           }
         />

@@ -35,6 +35,7 @@ interface DiaryTimelineProps {
   onEdit: (entry: DiaryEntry) => void;
   onWrite: (date: string) => void;
   lead: ReactNode;
+  aside: ReactNode;
 }
 
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -57,7 +58,8 @@ export function DiaryTimeline({
   onOpen,
   onEdit,
   onWrite,
-  lead
+  lead,
+  aside
 }: DiaryTimelineProps) {
   const today = toDateInputValue();
   const [viewMonth, setViewMonth] = useState(() => monthKey(entries[0]?.date ?? today));
@@ -436,6 +438,22 @@ export function DiaryTimeline({
             ) : null}
           </motion.article>
         ) : null}
+      </AnimatePresence>
+
+      {/* Sits to the right of the calendar until a day opens there. */}
+      <AnimatePresence initial={false} mode="popLayout">
+        {selectedDate || !aside ? null : (
+          <motion.div
+            key="aside"
+            className="calendar-aside"
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 32 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+          >
+            {aside}
+          </motion.div>
+        )}
       </AnimatePresence>
     </section>
   );
